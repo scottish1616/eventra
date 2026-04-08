@@ -1,4 +1,4 @@
-import { NextAuthOptions } from "next-auth";
+import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { createClient } from "@supabase/supabase-js";
@@ -10,7 +10,7 @@ function getSupabase() {
   );
 }
 
-export const authOptions: NextAuthOptions = {
+export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   pages: { signIn: "/auth/login" },
   providers: [
@@ -21,32 +21,23 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
         try {
           const supabase = getSupabase();
-
           const { data, error } = await supabase
             .from("users")
             .select("id, name, email, password, role")
-            .eq("email", credentials.email.toLowerCase().trim())
+            .eq("email", (credentials.email as string).toLowerCase().trim())
             .single();
 
-          if (error || !data) {
-            return null;
-          }
+          if (error || !data || !data.password) return null;
 
-          if (!data.password) {
-            return null;
-          }
-
-          const isValid = await compare(credentials.password, data.password);
-
-          if (!isValid) {
-            return null;
-          }
+          const isValid = await compare(
+            credentials.password as string,
+            data.password,
+          );
+          if (!isValid) return null;
 
           return {
             id: data.id,
@@ -66,9 +57,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
-        token.role = (
-          user as { id: string; name: string; email: string; role: string }
-        ).role;
+        token.role = (user as Record<string, unknown>).role as string;
       }
       return token;
     },
@@ -76,24 +65,12 @@ export const authOptions: NextAuthOptions = {
       if (token) {
         session.user.email = token.email as string;
         session.user.name = token.name as string;
-        (
-          session.user as {
-            email: string;
-            name: string;
-            role?: string;
-            id?: string;
-          }
-        ).role = token.role as string;
-        (
-          session.user as {
-            email: string;
-            name: string;
-            role?: string;
-            id?: string;
-          }
-        ).id = token.id as string;
+        (session.user as unknown as Record<string, unknown>).role = token.role;
+        (session.user as unknown as Record<string, unknown>).id = token.id;
       }
       return session;
     },
   },
-};
+});
+
+export const authOptions = { auth };

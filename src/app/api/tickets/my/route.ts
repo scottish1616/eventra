@@ -1,23 +1,31 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { createClient } from "@supabase/supabase-js";
+import { getSessionUser } from "@/lib/session";
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.email) {
+    const sessionUser = await getSessionUser();
+    if (!sessionUser?.email) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 },
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true },
-    });
+    const supabase = getSupabase();
+
+    const { data: user } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", sessionUser.email)
+      .single();
 
     if (!user) {
       return NextResponse.json(
@@ -26,36 +34,32 @@ export async function GET() {
       );
     }
 
-    const tickets = await prisma.ticket.findMany({
-      where: {
-        userId: user.id,
-      },
-      include: {
-        event: {
-          select: {
-            title: true,
-            date: true,
-            location: true,
-            venue: true,
-          },
-        },
-        ticketType: {
-          select: {
-            name: true,
-            price: true,
-            category: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const { data: tickets, error } = await supabase
+      .from("tickets")
+      .select(
+        `
+        *,
+        events!tickets_eventId_fkey(title, date, location, venue),
+        ticket_types!tickets_ticketTypeId_fkey(name, price, category)
+      `,
+      )
+      .eq("userId", user.id)
+      .order("createdAt", { ascending: false });
 
-    return NextResponse.json({
-      success: true,
-      data: tickets,
-    });
+    if (error) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 },
+      );
+    }
+
+    const formatted = (tickets || []).map((t) => ({
+      ...t,
+      event: t.events,
+      ticketType: t.ticket_types,
+    }));
+
+    return NextResponse.json({ success: true, data: formatted });
   } catch (error) {
     console.error("[GET /api/tickets/my]", error);
     return NextResponse.json(
