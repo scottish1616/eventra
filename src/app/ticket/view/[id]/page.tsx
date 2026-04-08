@@ -1,3 +1,3 @@
 export default function TicketViewPage() {
-  return null;
+  return <div>Ticket View Page</div>;
 }
