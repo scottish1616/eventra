@@ -17,7 +17,14 @@ export interface Event {
   slug: string;
   organizer: { name: string; organizationName: string | null } | null;
   _count: { tickets: number };
-  ticketTypes?: { price: number; name: string; category: string; totalSlots: number; soldCount: number }[];
+  ticketTypes?: {
+    price: number;
+    name: string;
+    category: string;
+    totalSlots: number;
+    soldCount: number;
+  }[];
+  orders?: { total: number }[];
 }
 
 export interface Complaint {
@@ -64,12 +71,4 @@ export interface PlatformStats {
   totalComplaints: number;
   pendingComplaints: number;
   escalatedComplaints: number;
-}
-
-export interface Notification {
-  id: string;
-  message: string;
-  type: "complaint" | "organizer" | "ticket" | "event";
-  read: boolean;
-  createdAt: string;
 }

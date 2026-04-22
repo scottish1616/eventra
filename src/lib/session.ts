@@ -4,15 +4,13 @@ export async function getSessionUser() {
   try {
     const session = await auth();
     if (!session?.user) return null;
-    const user = session.user as {
+    return session.user as {
       id?: string;
       name?: string | null;
       email?: string | null;
       role?: string;
     };
-    return user;
-  } catch (error) {
-    console.error("[getSessionUser]", error);
+  } catch {
     return null;
   }
 }
