@@ -62,7 +62,7 @@ async function testEventCreation() {
     const result = await prisma.$transaction(async (tx) => {
       // Create Event
       const event = await tx.event.create({
-         {
+        data: {
           ...testEvent,
         },
       });
@@ -71,7 +71,7 @@ async function testEventCreation() {
       // Create Ticket Types
       for (const tt of testTickets) {
         await tx.ticketType.create({
-           {
+          data: {
             eventId: event.id,
             ...tt,
           },
