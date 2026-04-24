@@ -4,16 +4,24 @@ import { createClient } from "@supabase/supabase-js";
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }
 
 export async function GET(
   request: Request,
-  context: { params: Promise<{ id: string }> },
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await context.params;
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: "Ticket ID required" },
+        { status: 400 }
+      );
+    }
+
     const supabase = getSupabase();
 
     const { data: ticket, error } = await supabase
@@ -25,7 +33,7 @@ export async function GET(
     if (error || !ticket) {
       return NextResponse.json(
         { success: false, error: "Ticket not found" },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -53,7 +61,7 @@ export async function GET(
     console.error("[Public Ticket GET]", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch ticket" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

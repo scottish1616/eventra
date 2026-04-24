@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import { MapPin, Calendar, CheckCircle, XCircle } from "lucide-react";
 
 interface Ticket {
   id: string;
   ticketNumber: string;
   qrCode: string;
+  qrCodeData: string;
   attendeeName: string;
   attendeeEmail: string;
   isUsed: boolean;
@@ -18,41 +18,43 @@ interface Ticket {
     date: string;
     location: string;
     venue: string | null;
-    organizer: { name: string; organizationName: string | null };
-  };
+  } | null;
   ticketType: {
     name: string;
     price: number;
     category: string;
-  };
+  } | null;
 }
 
-export default function TicketPage() {
+export default function PublicTicketPage() {
   const params = useParams();
-  const router = useRouter();
-  const { status } = useSession();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/login");
+    const id = params?.id;
+    if (!id) {
+      setError("No ticket ID provided");
+      setLoading(false);
       return;
     }
-    if (status === "authenticated") {
-      fetch(`/api/tickets/${params.id}`)
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.success) {
-            setTicket(d.data);
-          } else {
-            setError(d.error || "Ticket not found");
-          }
-          setLoading(false);
-        });
-    }
-  }, [status, params.id, router]);
+
+    fetch(`/api/tickets/public/${id}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) {
+          setTicket(d.data);
+        } else {
+          setError(d.error || "Ticket not found");
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setError("Failed to load ticket");
+        setLoading(false);
+      });
+  }, [params?.id]);
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("en-KE", {
@@ -71,30 +73,39 @@ export default function TicketPage() {
 
   const categoryGradients: Record<string, string> = {
     REGULAR: "from-blue-600 to-blue-700",
-    VIP: "from-amber-500 to-amber-600",
-    VVIP: "from-violet-600 to-violet-700",
+    VIP: "from-amber-500 to-orange-500",
+    VVIP: "from-purple-600 to-blue-600",
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500 text-sm">Loading ticket...</p>
+        <div className="text-center">
+          <div className="w-10 h-10 border-2 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">Loading ticket...</p>
+        </div>
       </div>
     );
   }
 
   if (error || !ticket) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-700 font-medium">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="card p-12 max-w-sm w-full text-center">
+          <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <XCircle className="w-8 h-8 text-red-400" />
+          </div>
+          <p className="text-gray-700 font-semibold text-lg">
             {error || "Ticket not found"}
           </p>
+          <p className="text-gray-400 text-sm mt-2 mb-6">
+            Check your ticket number and try again
+          </p>
           <Link
-            href="/account"
-            className="mt-4 inline-block text-violet-600 text-sm hover:underline"
+            href="/ticket/lookup"
+            className="btn-primary inline-flex items-center gap-2 text-sm"
           >
-            Back to my tickets
+            Try again
           </Link>
         </div>
       </div>
@@ -102,75 +113,84 @@ export default function TicketPage() {
   }
 
   const gradient =
-    categoryGradients[ticket.ticketType.category] ??
-    "from-gray-600 to-gray-700";
+    categoryGradients[ticket.ticketType?.category || "REGULAR"];
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <Link
-          href="/"
-          className="flex items-center gap-2 font-bold text-xl text-gray-900"
-        >
-          <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">
-            E
+      <nav className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <Link href="/" className="flex items-center gap-2 font-bold text-xl text-gray-900">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center shadow-md">
+                <span className="text-white text-xs font-bold">E</span>
+              </div>
+              Eventra
+            </Link>
+            <Link href="/ticket/lookup" className="text-sm text-gray-500 hover:text-purple-600">
+              Find another ticket
+            </Link>
           </div>
-          Eventra
-        </Link>
-        <Link href="/account" className="text-sm text-gray-600 hover:underline">
-          My tickets
-        </Link>
+        </div>
       </nav>
 
       <div className="max-w-md mx-auto px-4 py-10">
+
         {/* Success banner */}
         <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-4 mb-6">
-          <span className="text-emerald-600 text-lg">✓</span>
+          <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-emerald-800">
-              Ticket confirmed
-            </p>
-            <p className="text-xs text-emerald-600">
-              Show this QR code at the venue entrance
-            </p>
+            <p className="text-sm font-semibold text-emerald-800">Ticket confirmed</p>
+            <p className="text-xs text-emerald-600">Show QR code at venue entrance</p>
           </div>
         </div>
 
         {/* Ticket card */}
-        <div className="bg-white rounded-3xl overflow-hidden shadow-lg border border-gray-100">
+        <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-gray-100">
+
           {/* Header */}
           <div className={`bg-gradient-to-r ${gradient} px-6 py-6 text-white`}>
             <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-xs font-medium text-white/70 uppercase tracking-wider mb-1">
-                  {ticket.ticketType.category} TICKET
+                <p className="text-xs font-bold text-white/70 uppercase tracking-wider mb-1">
+                  {ticket.ticketType?.category || "TICKET"}
                 </p>
                 <h1 className="text-xl font-bold leading-tight">
-                  {ticket.event.title}
+                  {ticket.event?.title || "Event"}
                 </h1>
               </div>
-              <div className="bg-white/20 px-3 py-1 rounded-full">
-                <p className="text-xs font-bold">{ticket.ticketType.name}</p>
+              <div className="bg-white/20 px-3 py-1 rounded-full flex-shrink-0 ml-3">
+                <p className="text-xs font-bold">{ticket.ticketType?.name}</p>
               </div>
             </div>
-            <div className="space-y-1 text-sm text-white/90">
-              <p>📅 {formatDate(ticket.event.date)}</p>
-              <p>
-                📍 {ticket.event.location}
-                {ticket.event.venue ? ` · ${ticket.event.venue}` : ""}
-              </p>
+            <div className="space-y-1.5 text-sm text-white/90">
+              {ticket.event?.date && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 flex-shrink-0" />
+                  {formatDate(ticket.event.date)}
+                </div>
+              )}
+              {ticket.event?.location && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 flex-shrink-0" />
+                  {ticket.event.location}
+                  {ticket.event.venue ? ` · ${ticket.event.venue}` : ""}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Dashed divider */}
-          <div className="border-t-2 border-dashed border-gray-200 mx-4" />
+          <div className="relative mx-4">
+            <div className="border-t-2 border-dashed border-gray-200" />
+            <div className="absolute -left-7 -top-3 w-6 h-6 rounded-full bg-gray-50 border border-gray-200" />
+            <div className="absolute -right-7 -top-3 w-6 h-6 rounded-full bg-gray-50 border border-gray-200" />
+          </div>
 
           {/* QR Code */}
           <div className="px-6 py-6 flex flex-col items-center">
             {ticket.qrCode ? (
-              <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm mb-4">
-                <Image
+              <div className="bg-white p-3 rounded-2xl border-2 border-gray-100 shadow-sm mb-4">
+                <img
                   src={ticket.qrCode}
                   alt="QR Code"
                   width={200}
@@ -179,8 +199,13 @@ export default function TicketPage() {
                 />
               </div>
             ) : (
-              <div className="w-48 h-48 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
-                <p className="text-xs text-gray-400">QR code unavailable</p>
+              <div className="w-52 h-52 bg-gray-100 rounded-2xl flex flex-col items-center justify-center mb-4 border-2 border-dashed border-gray-200">
+                <p className="text-xs text-gray-400 text-center px-4">
+                  QR code will appear here
+                </p>
+                <p className="text-xs font-mono text-gray-500 mt-2 text-center break-all px-2">
+                  {ticket.qrCodeData}
+                </p>
               </div>
             )}
             <p className="text-xs font-mono text-gray-400 text-center break-all">
@@ -189,50 +214,55 @@ export default function TicketPage() {
           </div>
 
           {/* Dashed divider */}
-          <div className="border-t-2 border-dashed border-gray-200 mx-4" />
+          <div className="relative mx-4">
+            <div className="border-t-2 border-dashed border-gray-200" />
+            <div className="absolute -left-7 -top-3 w-6 h-6 rounded-full bg-gray-50 border border-gray-200" />
+            <div className="absolute -right-7 -top-3 w-6 h-6 rounded-full bg-gray-50 border border-gray-200" />
+          </div>
 
           {/* Details */}
-          <div className="px-6 py-4 space-y-2 text-sm">
+          <div className="px-6 py-4 space-y-2.5 text-sm">
             {[
               { label: "Attendee", value: ticket.attendeeName },
-              { label: "Email", value: ticket.attendeeEmail },
               {
                 label: "Price paid",
-                value: formatCurrency(ticket.ticketType.price),
-              },
-              {
-                label: "Organizer",
-                value:
-                  ticket.event.organizer.organizationName ??
-                  ticket.event.organizer.name,
+                value: ticket.ticketType
+                  ? formatCurrency(ticket.ticketType.price)
+                  : "—",
               },
             ].map((row) => (
-              <div key={row.label} className="flex justify-between">
-                <span className="text-gray-500">{row.label}</span>
-                <span className="font-medium text-gray-900 truncate ml-4">
-                  {row.value}
-                </span>
+              <div key={row.label} className="flex justify-between items-center">
+                <span className="text-gray-400 font-medium">{row.label}</span>
+                <span className="font-semibold text-gray-900">{row.value}</span>
               </div>
             ))}
           </div>
 
-          {/* Status bar */}
+          {/* Status */}
           <div
-            className={`px-6 py-3 text-center ${ticket.isUsed ? "bg-gray-100" : "bg-emerald-50"}`}
+            className={`px-6 py-3 text-center ${
+              ticket.isUsed ? "bg-gray-100" : "bg-emerald-50"
+            }`}
           >
             <p
-              className={`text-xs font-semibold ${ticket.isUsed ? "text-gray-500" : "text-emerald-700"}`}
+              className={`text-xs font-bold ${
+                ticket.isUsed ? "text-gray-500" : "text-emerald-700"
+              }`}
             >
-              {ticket.isUsed ? "Already used" : "Valid — not yet used"}
+              {ticket.isUsed ? "Already used at entry" : "Valid — not yet used"}
             </p>
           </div>
         </div>
 
+        <p className="text-center text-xs text-gray-400 mt-6">
+          Screenshot or bookmark this page to access your ticket anytime
+        </p>
+
         <Link
-          href="/account"
-          className="mt-6 w-full flex items-center justify-center gap-2 border border-gray-200 bg-white text-gray-700 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition"
+          href="/"
+          className="mt-4 w-full flex items-center justify-center gap-2 border border-gray-200 bg-white text-gray-600 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition"
         >
-          Back to my tickets
+          Browse more events
         </Link>
       </div>
     </div>

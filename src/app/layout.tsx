@@ -4,17 +4,13 @@ import { Providers } from "@/components/layout/Providers";
 
 export const metadata: Metadata = {
   title: { default: "Eventra Ticketing", template: "%s | Eventra" },
-  description: "Create events, sell tickets, get paid.",
+  description: "Kenya's modern event ticketing platform",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased bg-gray-50 text-gray-900">
+      <body className="antialiased bg-gray-950 text-gray-100">
         <Providers>{children}</Providers>
       </body>
     </html>
