@@ -12,34 +12,47 @@ function getSupabase() {
 
 export async function GET() {
   try {
-    const user = await getSessionUser();
-    if (!user || user.role !== "ADMIN") {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    const sessionUser = await getSessionUser();
+    if (!sessionUser || sessionUser.role !== "ADMIN") {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
     const supabase = getSupabase();
+
     const { data, error } = await supabase
       .from("users")
-      .select("id, name, email, phone, organizationName, createdAt")
+      .select("id, name, email, phone, organizationName, createdAt, subscriptionStatus")
       .eq("role", "ORGANIZER")
       .order("createdAt", { ascending: false });
 
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: data || [] });
   } catch (error) {
     console.error("[Admin Organizers GET]", error);
-    return NextResponse.json({ success: false, error: "Failed to fetch organizers" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch organizers" },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getSessionUser();
-    if (!user || user.role !== "ADMIN") {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    const sessionUser = await getSessionUser();
+    if (!sessionUser || sessionUser.role !== "ADMIN") {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
     const body = await req.json();
@@ -78,20 +91,28 @@ export async function POST(req: NextRequest) {
         phone: phone || null,
         role: "ORGANIZER",
         organizationName: organizationName || null,
+        subscriptionStatus: "pending",
       })
-      .select("id, name, email, role")
+      .select("id, name, email, role, subscriptionStatus")
       .single();
 
     if (error || !newUser) {
+      console.error("[Admin Create Organizer]", error);
       return NextResponse.json(
         { success: false, error: error?.message || "Failed to create organizer" },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true, data: newUser }, { status: 201 });
+    return NextResponse.json(
+      { success: true, data: newUser },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("[Admin Create Organizer]", error);
-    return NextResponse.json({ success: false, error: "Something went wrong" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Something went wrong" },
+      { status: 500 }
+    );
   }
 }

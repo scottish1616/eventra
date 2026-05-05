@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Ticket, Eye, EyeOff, LogIn } from "lucide-react";
 
-export default function LoginPage() {
+export default function OrganizerLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,8 +18,11 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
+    const { signIn } = await import("next-auth/react");
     const res = await signIn("credentials", {
-      email, password, redirect: false,
+      email,
+      password,
+      redirect: false,
     });
 
     if (res?.error) {
@@ -29,26 +31,27 @@ export default function LoginPage() {
       return;
     }
 
-    try {
-      const sessionRes = await fetch("/api/auth/session");
-      const sessionData = await sessionRes.json();
-      const role = sessionData?.user?.role;
+    const sessionRes = await fetch("/api/auth/session");
+    const sessionData = await sessionRes.json();
+    const role = (sessionData?.user as { role?: string })?.role;
 
-      if (role === "ADMIN") router.push("/dashboard/admin");
-      else if (role === "ORGANIZER") router.push("/dashboard/organizer");
-      else router.push("/");
-      router.refresh();
-    } catch {
-      router.push("/");
+    if (role === "ADMIN") {
+      router.push("/dashboard/admin");
+    } else if (role === "ORGANIZER") {
+      router.push("/dashboard/organizer");
+    } else {
+      setError("Account not authorized as organizer");
+      setLoading(false);
+      return;
     }
+
+    router.refresh();
     setLoading(false);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-md">
-
-        {/* Header */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center shadow-lg">
@@ -56,16 +59,15 @@ export default function LoginPage() {
             </div>
             <span className="font-bold text-2xl text-gray-900">Eventra</span>
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
-          <p className="text-gray-500 text-sm mt-1">Sign in to your organizer account</p>
+          <h1 className="text-2xl font-bold text-gray-900">Organizer sign in</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Sign in to manage your events
+          </p>
         </div>
 
         <div className="card p-8 shadow-xl shadow-gray-100">
           {error && (
-            <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
-              <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                <span className="text-red-600 text-xs font-bold">!</span>
-              </div>
+            <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl">
               <p className="text-sm text-red-700 font-medium">{error}</p>
             </div>
           )}
@@ -111,7 +113,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary flex items-center justify-center gap-2 py-3.5 text-base disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
+              className="w-full btn-primary flex items-center justify-center gap-2 py-3.5 text-base disabled:opacity-60"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -123,14 +125,24 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <div className="mt-6 card p-4 text-center">
-          <p className="text-xs text-gray-500">
-            Looking to buy tickets?{" "}
-            <Link href="/" className="text-purple-600 font-semibold hover:underline">
-              Browse events
+        <div className="mt-6 space-y-3">
+          <div className="card p-4 text-center">
+            <p className="text-xs text-gray-500">
+              Looking to buy tickets?{" "}
+              <Link href="/" className="text-purple-600 font-semibold hover:underline">
+                Browse events
+              </Link>
+              {" "}— no account needed
+            </p>
+          </div>
+          <div className="text-center">
+            <Link
+              href="/auth/admin-login"
+              className="text-xs text-gray-400 hover:text-gray-600"
+            >
+              Admin portal →
             </Link>
-            {" "}— no account needed
-          </p>
+          </div>
         </div>
       </div>
     </div>
