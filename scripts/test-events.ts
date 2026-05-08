@@ -1,5 +1,5 @@
 // scripts/test-event.ts
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, EventStatus, TicketCategory } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -24,7 +24,9 @@ async function testEventCreation() {
 
     if (!user) {
       console.warn("⚠️  No ORGANIZER user found in DB.");
-      console.log("👉 Please create an organizer user first, or update this script with a valid ID.");
+      console.log(
+        "👉 Please create an organizer user first, or update this script with a valid ID.",
+      );
       return;
     }
     console.log(`👤 Using organizer: ${user.email} (${user.id})\n`);
@@ -40,13 +42,13 @@ async function testEventCreation() {
       slug: `test-event-${Math.floor(Math.random() * 10000)}`,
       organizerId: user.id,
       // ⚠️ Remove 'status' if your Event model doesn't have it
-      status: "DRAFT", 
+      status: EventStatus.DRAFT,
     };
 
     const testTickets = [
       {
         name: "Early Bird",
-        category: "REGULAR",
+        category: TicketCategory.REGULAR,
         price: 500,
         currency: "KES",
         totalSlots: 50,
@@ -85,7 +87,6 @@ async function testEventCreation() {
     console.log("\n🎉 SUCCESS! Test event created.");
     console.log("🔗 ID:", result.id);
     console.log("🏷️  Title:", result.title);
-
   } catch (error: any) {
     console.error("\n❌ TEST FAILED!");
     console.error("📛 Error Code:", error.code || "N/A");
@@ -95,7 +96,10 @@ async function testEventCreation() {
       console.error("💡 Prisma Meta:", JSON.stringify(error.meta, null, 2));
     }
     if (error.stack) {
-      console.error("📄 Stack (first 5 lines):", error.stack.split("\n").slice(0, 5).join("\n"));
+      console.error(
+        "📄 Stack (first 5 lines):",
+        error.stack.split("\n").slice(0, 5).join("\n"),
+      );
     }
   } finally {
     await prisma.$disconnect();

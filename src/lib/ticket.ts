@@ -1,4 +1,4 @@
-import { prisma } from "./prisma";
+import prisma from "./prisma";
 import { generateQRCode, generateQrPayload } from "./qrcode";
 
 function generateTicketNumber(prefix: string = "EVT"): string {

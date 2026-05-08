@@ -5,20 +5,20 @@ import { getSessionUser } from "@/lib/session";
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 }
 
 export async function DELETE(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const sessionUser = await getSessionUser();
     if (!sessionUser || sessionUser.role !== "ADMIN") {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -34,7 +34,7 @@ export async function DELETE(
     if (error) {
       return NextResponse.json(
         { success: false, error: error.message },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -46,39 +46,54 @@ export async function DELETE(
     console.error("[Admin Delete Organizer]", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PATCH(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const sessionUser = await getSessionUser();
     if (!sessionUser || sessionUser.role !== "ADMIN") {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     const { id } = await context.params;
     const body = await req.json();
+    const { subscriptionStatus, approvalStatus, rejectionReason } = body;
     const supabase = getSupabase();
+
+    const updates: Record<string, any> = {};
+    if (subscriptionStatus !== undefined)
+      updates.subscriptionStatus = subscriptionStatus;
+    if (approvalStatus !== undefined) {
+      updates.approvalStatus = approvalStatus;
+      if (approvalStatus === "APPROVED") {
+        updates.approvedBy = sessionUser.id;
+        updates.approvedAt = new Date().toISOString();
+      }
+      if (approvalStatus === "REJECTED" && rejectionReason) {
+        updates.rejectionReason = rejectionReason;
+      }
+    }
 
     const { data, error } = await supabase
       .from("users")
-      .update({ subscriptionStatus: body.subscriptionStatus })
+      .update(updates)
       .eq("id", id)
-      .select("id, name, email, subscriptionStatus")
+      .select("id, name, email, role, approvalStatus, subscriptionStatus")
       .single();
 
     if (error) {
       return NextResponse.json(
         { success: false, error: error.message },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -87,7 +102,7 @@ export async function PATCH(
     console.error("[Admin Patch Organizer]", error);
     return NextResponse.json(
       { success: false, error: "Failed to update" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

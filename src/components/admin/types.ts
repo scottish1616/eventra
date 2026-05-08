@@ -5,7 +5,8 @@ export interface Organizer {
   phone: string | null;
   organizationName: string | null;
   createdAt: string;
-  subscriptionStatus: "active" | "pending" | "inactive" | "paused";
+  approvalStatus: "PENDING" | "APPROVED" | "REJECTED";
+  subscriptionStatus?: "active" | "pending" | "inactive" | "paused";
 }
 
 export interface Event {

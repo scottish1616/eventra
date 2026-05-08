@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import {
-  MapPin, Calendar, CheckCircle,
-  XCircle, Ticket, ArrowLeft
-} from "lucide-react";
+import { ArrowLeft, Ticket } from "lucide-react";
+import { EnhancedTicketCard } from "@/components/tickets/EnhancedTicketCard";
 
 interface TicketData {
   id: string;
@@ -16,21 +14,47 @@ interface TicketData {
   attendeeName: string;
   attendeeEmail: string | null;
   isUsed: boolean;
+  usedAt?: string | null;
   createdAt: string;
   event: {
     title: string;
     date: string;
+    endDate?: string;
     location: string;
     venue: string | null;
+    slug: string;
   } | null;
   ticketType: {
     name: string;
     price: number;
     category: string;
+    description?: string;
+  } | null;
+  order?: {
+    total: number;
+    status: string;
+    buyerName: string;
   } | null;
 }
 
 export default function TicketViewPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 border-3 border-purple-600 border-t-purple-300 rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-gray-400 text-sm">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <TicketContent />
+    </Suspense>
+  );
+}
+
+function TicketContent() {
   const params = useParams();
   const id = params?.id as string;
   const [ticket, setTicket] = useState<TicketData | null>(null);
@@ -44,7 +68,7 @@ export default function TicketViewPage() {
       return;
     }
 
-    fetch(`/api/tickets/public/${id}`)
+    fetch(`/api/ticket/view/${id}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.success && d.data) {
@@ -57,28 +81,12 @@ export default function TicketViewPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  const formatDate = (d: string) =>
-    new Date(d).toLocaleDateString("en-KE", {
-      weekday: "long", day: "numeric", month: "long", year: "numeric",
-    });
-
-  const formatCurrency = (n: number) =>
-    new Intl.NumberFormat("en-KE", {
-      style: "currency", currency: "KES", minimumFractionDigits: 0,
-    }).format(n);
-
-  const gradients: Record<string, string> = {
-    REGULAR: "from-blue-600 to-blue-700",
-    VIP: "from-amber-500 to-orange-500",
-    VVIP: "from-purple-600 to-blue-600",
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-10 h-10 border-2 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Loading ticket...</p>
+          <div className="w-12 h-12 border-3 border-purple-600 border-t-purple-300 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-400 text-sm">Loading your ticket...</p>
         </div>
       </div>
     );
@@ -86,19 +94,34 @@ export default function TicketViewPage() {
 
   if (error || !ticket) {
     return (
+<<<<<<< HEAD
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="bg-white rounded-3xl border border-gray-100 shadow-lg p-10 max-w-sm w-full text-center">
           <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <XCircle className="w-7 h-7 text-red-400" />
           </div>
           <p className="text-gray-800 font-bold text-lg">Ticket not found</p>
+=======
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 flex items-center justify-center px-4">
+        <div className="bg-gray-900 border border-gray-800 rounded-3xl p-10 max-w-sm w-full text-center">
+          <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">😕</span>
+          </div>
+          <p className="text-white font-bold text-lg">Ticket not found</p>
+>>>>>>> 929991a (feat: Complete ticket system redesign and analytics implementation)
           <p className="text-gray-400 text-sm mt-2 mb-6">
             {error || "This ticket does not exist or has been removed"}
           </p>
           <Link
             href="/ticket/lookup"
+<<<<<<< HEAD
             className="inline-flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-purple-700 transition"
           >
+=======
+            className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-2xl text-sm font-semibold transition"
+          >
+            <ArrowLeft className="w-4 h-4" />
+>>>>>>> 929991a (feat: Complete ticket system redesign and analytics implementation)
             Try lookup
           </Link>
         </div>
@@ -106,74 +129,37 @@ export default function TicketViewPage() {
     );
   }
 
+<<<<<<< HEAD
   const gradient = gradients[ticket.ticketType?.category || "REGULAR"];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-white border-b border-gray-100 shadow-sm px-4 py-3 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-bold text-gray-900">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center shadow-md">
-            <Ticket className="w-4 h-4 text-white" />
-          </div>
-          Eventra
-        </Link>
-        <Link
-          href="/ticket/lookup"
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-purple-600 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Find another ticket
-        </Link>
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950">
+      {/* Header */}
+      <nav className="border-b border-gray-800 px-4 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 font-bold text-white">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-r from-purple-500 to-blue-600 flex items-center justify-center">
+              <Ticket className="w-4 h-4 text-white" />
+            </div>
+            Eventra
+          </Link>
+          <Link
+            href="/ticket/lookup"
+            className="flex items-center gap-2 text-gray-400 hover:text-white transition"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to lookup
+          </Link>
+        </div>
       </nav>
 
-      <div className="max-w-sm mx-auto px-4 py-8">
-        {/* Status banner */}
-        <div className={`flex items-center gap-3 rounded-2xl px-4 py-3 mb-5 ${
-          ticket.isUsed
-            ? "bg-gray-100 border border-gray-200"
-            : "bg-emerald-50 border border-emerald-200"
-        }`}>
-          {ticket.isUsed
-            ? <XCircle className="w-5 h-5 text-gray-400 flex-shrink-0" />
-            : <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-          }
-          <div>
-            <p className={`text-sm font-bold ${ticket.isUsed ? "text-gray-600" : "text-emerald-800"}`}>
-              {ticket.isUsed ? "Ticket already used" : "Valid ticket"}
-            </p>
-            <p className={`text-xs ${ticket.isUsed ? "text-gray-400" : "text-emerald-600"}`}>
-              {ticket.isUsed ? "This ticket has been scanned at entry" : "Show QR code at venue entrance"}
-            </p>
-          </div>
-        </div>
-
-        {/* Ticket card */}
-        <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-gray-100">
-
-          {/* Header with gradient */}
-          <div className={`bg-gradient-to-br ${gradient} px-6 py-6 text-white`}>
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className="flex-1 min-w-0">
-                <span className="text-xs font-bold text-white/60 uppercase tracking-widest">
-                  {ticket.ticketType?.category || "TICKET"}
-                </span>
-                <h1 className="text-lg font-bold mt-1 leading-tight">
-                  {ticket.event?.title || "Event"}
-                </h1>
-              </div>
-              <div className="bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-xl flex-shrink-0">
-                <p className="text-xs font-bold">{ticket.ticketType?.name || "Ticket"}</p>
-              </div>
-            </div>
-            <div className="space-y-1.5 text-sm text-white/80">
-              {ticket.event?.date && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 flex-shrink-0" />
-                  <span>{formatDate(ticket.event.date)}</span>
-                </div>
-              )}
-              {ticket.event?.location && (
+      {/* Main Content */}
+      <div className="py-8 px-4">
+        <EnhancedTicketCard ticket={ticket} />
+      </div>
+    </div>
+  );
+}
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 flex-shrink-0" />
                   <span>
@@ -275,4 +261,53 @@ export default function TicketViewPage() {
       </div>
     </div>
   );
+=======
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950">
+      {/* Header */}
+      <nav className="border-b border-gray-800 px-4 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <Link
+            href="/"
+            className="flex items-center gap-2 font-bold text-white"
+          >
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-r from-purple-500 to-blue-600 flex items-center justify-center">
+              <Ticket className="w-4 h-4 text-white" />
+            </div>
+            Eventra
+          </Link>
+          <Link
+            href="/ticket/lookup"
+            className="flex items-center gap-2 text-gray-400 hover:text-white transition"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to lookup
+          </Link>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <div className="py-8 px-4">
+        <EnhancedTicketCard ticket={ticket} />
+      </div>
+    </div>
+  );
+}
+
+export default function TicketViewPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 border-3 border-purple-600 border-t-purple-300 rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-gray-400 text-sm">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <TicketContent />
+    </Suspense>
+  );
+>>>>>>> 929991a (feat: Complete ticket system redesign and analytics implementation)
 }

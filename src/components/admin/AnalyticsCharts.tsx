@@ -4,21 +4,39 @@ import { lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 
 const {
-  ResponsiveContainer, AreaChart, Area,
-  LineChart, Line, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
 } = {
-  ResponsiveContainer: lazy(() => import("recharts").then(m => ({ default: m.ResponsiveContainer }))),
-  AreaChart: lazy(() => import("recharts").then(m => ({ default: m.AreaChart }))),
-  Area: lazy(() => import("recharts").then(m => ({ default: m.Area }))),
-  LineChart: lazy(() => import("recharts").then(m => ({ default: m.LineChart }))),
-  Line: lazy(() => import("recharts").then(m => ({ default: m.Line }))),
-  BarChart: lazy(() => import("recharts").then(m => ({ default: m.BarChart }))),
-  Bar: lazy(() => import("recharts").then(m => ({ default: m.Bar }))),
-  XAxis: lazy(() => import("recharts").then(m => ({ default: m.XAxis }))),
-  YAxis: lazy(() => import("recharts").then(m => ({ default: m.YAxis }))),
-  CartesianGrid: lazy(() => import("recharts").then(m => ({ default: m.CartesianGrid }))),
-  Tooltip: lazy(() => import("recharts").then(m => ({ default: m.Tooltip }))),
+  ResponsiveContainer: lazy(() =>
+    import("recharts").then((m) => ({ default: m.ResponsiveContainer })),
+  ),
+  AreaChart: lazy(() =>
+    import("recharts").then((m) => ({ default: m.AreaChart })),
+  ),
+  Area: lazy(() => import("recharts").then((m) => ({ default: m.Area }))),
+  LineChart: lazy(() =>
+    import("recharts").then((m) => ({ default: m.LineChart })),
+  ),
+  Line: lazy(() => import("recharts").then((m) => ({ default: m.Line }))),
+  BarChart: lazy(() =>
+    import("recharts").then((m) => ({ default: m.BarChart })),
+  ),
+  Bar: lazy(() => import("recharts").then((m) => ({ default: m.Bar }))),
+  XAxis: lazy(() => import("recharts").then((m) => ({ default: m.XAxis }))),
+  YAxis: lazy(() => import("recharts").then((m) => ({ default: m.YAxis }))),
+  CartesianGrid: lazy(() =>
+    import("recharts").then((m) => ({ default: m.CartesianGrid })),
+  ),
+  Tooltip: lazy(() => import("recharts").then((m) => ({ default: m.Tooltip }))),
 };
 
 const data = [
@@ -53,10 +71,15 @@ const axisProps = {
   tickLine: false as const,
 };
 
-export function AnalyticsCharts() {
+interface Props {
+  analyticsData?: any;
+}
+
+export function AnalyticsCharts({ analyticsData }: Props) {
+  // Use real data if available, otherwise fallback to sample data
+  const chartData = analyticsData?.monthlyData || data;
   return (
     <div className="grid lg:grid-cols-2 gap-5">
-
       {/* Revenue */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -67,7 +90,9 @@ export function AnalyticsCharts() {
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-sm font-bold text-white">Revenue</h3>
-            <p className="text-xs text-gray-600 mt-0.5">Platform earnings (KES)</p>
+            <p className="text-xs text-gray-600 mt-0.5">
+              Platform earnings (KES)
+            </p>
           </div>
           <span className="flex items-center gap-1.5 text-xs text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -85,9 +110,19 @@ export function AnalyticsCharts() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
               <XAxis dataKey="month" {...axisProps} />
-              <YAxis {...axisProps} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+              <YAxis
+                {...axisProps}
+                tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+              />
               <Tooltip {...tooltipStyle} />
-              <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} fill="url(#revG)" name="Revenue (KES)" />
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                stroke="#10b981"
+                strokeWidth={2.5}
+                fill="url(#revG)"
+                name="Revenue (KES)"
+              />
             </AreaChart>
           </ResponsiveContainer>
         </Suspense>
@@ -107,10 +142,12 @@ export function AnalyticsCharts() {
           </div>
           <div className="flex items-center gap-3 text-xs">
             <span className="flex items-center gap-1.5 text-gray-400">
-              <span className="w-2 h-2 rounded-full bg-purple-500" />Events
+              <span className="w-2 h-2 rounded-full bg-purple-500" />
+              Events
             </span>
             <span className="flex items-center gap-1.5 text-gray-400">
-              <span className="w-2 h-2 rounded-full bg-blue-400" />Tickets
+              <span className="w-2 h-2 rounded-full bg-blue-400" />
+              Tickets
             </span>
           </div>
         </div>
@@ -121,8 +158,18 @@ export function AnalyticsCharts() {
               <XAxis dataKey="month" {...axisProps} />
               <YAxis {...axisProps} />
               <Tooltip {...tooltipStyle} />
-              <Bar dataKey="events" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Events" />
-              <Bar dataKey="tickets" fill="#60a5fa" radius={[4, 4, 0, 0]} name="Tickets" />
+              <Bar
+                dataKey="events"
+                fill="#8b5cf6"
+                radius={[4, 4, 0, 0]}
+                name="Events"
+              />
+              <Bar
+                dataKey="tickets"
+                fill="#60a5fa"
+                radius={[4, 4, 0, 0]}
+                name="Tickets"
+              />
             </BarChart>
           </ResponsiveContainer>
         </Suspense>
@@ -137,7 +184,9 @@ export function AnalyticsCharts() {
       >
         <div className="mb-5">
           <h3 className="text-sm font-bold text-white">Organizer growth</h3>
-          <p className="text-xs text-gray-600 mt-0.5">New organizers per month</p>
+          <p className="text-xs text-gray-600 mt-0.5">
+            New organizers per month
+          </p>
         </div>
         <Suspense fallback={<ChartSkeleton h={130} />}>
           <ResponsiveContainer width="100%" height={130}>

@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { generateQRCode } from "@/lib/qrcode";
 
 export async function issueTicketsForOrder(orderId: string) {

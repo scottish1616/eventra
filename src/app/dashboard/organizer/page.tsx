@@ -9,19 +9,38 @@ import { Sidebar } from "@/components/shared/Sidebar";
 import { Topbar } from "@/components/shared/Topbar";
 import { ComplaintsCenter } from "@/components/shared/ComplaintsCenter";
 import {
-  TrendingUp, Ticket, Calendar, Users,
-  Plus, Eye, BarChart3, Settings, ArrowUpRight
+  TrendingUp,
+  Ticket,
+  Calendar,
+  Users,
+  Plus,
+  Eye,
+  BarChart3,
+  Settings,
+  ArrowUpRight,
 } from "lucide-react";
 import Link from "next/link";
 import { lazy, Suspense } from "react";
 
-const ResponsiveContainer = lazy(() => import("recharts").then(m => ({ default: m.ResponsiveContainer })));
-const AreaChart = lazy(() => import("recharts").then(m => ({ default: m.AreaChart })));
-const Area = lazy(() => import("recharts").then(m => ({ default: m.Area })));
-const XAxis = lazy(() => import("recharts").then(m => ({ default: m.XAxis })));
-const YAxis = lazy(() => import("recharts").then(m => ({ default: m.YAxis })));
-const CartesianGrid = lazy(() => import("recharts").then(m => ({ default: m.CartesianGrid })));
-const Tooltip = lazy(() => import("recharts").then(m => ({ default: m.Tooltip })));
+const ResponsiveContainer = lazy(() =>
+  import("recharts").then((m) => ({ default: m.ResponsiveContainer })),
+);
+const AreaChart = lazy(() =>
+  import("recharts").then((m) => ({ default: m.AreaChart })),
+);
+const Area = lazy(() => import("recharts").then((m) => ({ default: m.Area })));
+const XAxis = lazy(() =>
+  import("recharts").then((m) => ({ default: m.XAxis })),
+);
+const YAxis = lazy(() =>
+  import("recharts").then((m) => ({ default: m.YAxis })),
+);
+const CartesianGrid = lazy(() =>
+  import("recharts").then((m) => ({ default: m.CartesianGrid })),
+);
+const Tooltip = lazy(() =>
+  import("recharts").then((m) => ({ default: m.Tooltip })),
+);
 
 interface Event {
   id: string;
@@ -45,8 +64,14 @@ type SessionUser = {
 const tabConfig: Record<Tab, { title: string; subtitle: string }> = {
   overview: { title: "Dashboard", subtitle: "Your events and performance" },
   events: { title: "My Events", subtitle: "Manage your events" },
-  analytics: { title: "Analytics", subtitle: "Event performance and ticket trends" },
-  complaints: { title: "Attendee Issues", subtitle: "Handle and resolve attendee complaints" },
+  analytics: {
+    title: "Analytics",
+    subtitle: "Event performance and ticket trends",
+  },
+  complaints: {
+    title: "Attendee Issues",
+    subtitle: "Handle and resolve attendee complaints",
+  },
   settings: { title: "Settings", subtitle: "Account and event preferences" },
 };
 
@@ -61,10 +86,22 @@ const chartData = [
 ];
 
 const statusConfig: Record<string, { label: string; className: string }> = {
-  PUBLISHED: { label: "Published", className: "bg-green-500/10 text-green-400 border-green-500/20" },
-  DRAFT: { label: "Draft", className: "bg-gray-500/10 text-gray-400 border-gray-500/20" },
-  CANCELLED: { label: "Cancelled", className: "bg-red-500/10 text-red-400 border-red-500/20" },
-  COMPLETED: { label: "Completed", className: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+  PUBLISHED: {
+    label: "Published",
+    className: "bg-green-500/10 text-green-400 border-green-500/20",
+  },
+  DRAFT: {
+    label: "Draft",
+    className: "bg-gray-500/10 text-gray-400 border-gray-500/20",
+  },
+  CANCELLED: {
+    label: "Cancelled",
+    className: "bg-red-500/10 text-red-400 border-red-500/20",
+  },
+  COMPLETED: {
+    label: "Completed",
+    className: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  },
 };
 
 export default function OrganizerDashboard() {
@@ -75,28 +112,64 @@ export default function OrganizerDashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewEvent, setShowNewEvent] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [settingsData, setSettingsData] = useState<any>(null);
 
   const user = session?.user as SessionUser | undefined;
 
   useEffect(() => {
-    if (status === "unauthenticated") { router.push("/auth/login"); return; }
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
+      return;
+    }
     if (status === "authenticated") {
-      fetch("/api/events?mine=true")
-        .then((r) => r.json())
-        .then((d) => { setEvents(d.data || []); setLoading(false); })
+      Promise.all([
+        fetch("/api/events?mine=true").then((r) => r.json()),
+        fetch("/api/analytics").then((r) => r.json()),
+        fetch("/api/settings").then((r) => r.json()),
+      ])
+        .then(([eventsRes, analyticsRes, settingsRes]) => {
+          setEvents(eventsRes.data || []);
+          if (analyticsRes.success) {
+            setAnalyticsData(analyticsRes.data);
+          }
+          if (settingsRes.success) {
+            setSettingsData(settingsRes.data);
+          }
+          setLoading(false);
+        })
         .catch(() => setLoading(false));
     }
   }, [status, router]);
 
-  const totalRevenue = events.reduce((sum, e) => sum + (e.orders || []).reduce((s, o) => s + o.total, 0), 0);
-  const totalTickets = events.reduce((sum, e) => sum + (e._count?.tickets || 0), 0);
-  const published = events.filter((e) => e.status === "PUBLISHED").length;
+  const totalRevenue =
+    analyticsData?.currentStats?.totalRevenue ||
+    events.reduce(
+      (sum, e) => sum + (e.orders || []).reduce((s, o) => s + o.total, 0),
+      0,
+    );
+  const totalTickets =
+    analyticsData?.currentStats?.totalTickets ||
+    events.reduce((sum, e) => sum + (e._count?.tickets || 0), 0);
+  const published =
+    analyticsData?.currentStats?.publishedEvents ||
+    events.filter((e) => e.status === "PUBLISHED").length;
+  const totalAttendees = analyticsData?.currentStats?.totalAttendees || 0;
+  const upcomingEvents = analyticsData?.currentStats?.upcomingEvents || 0;
 
   const formatCurrency = (n: number) =>
-    new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", minimumFractionDigits: 0 }).format(n);
+    new Intl.NumberFormat("en-KE", {
+      style: "currency",
+      currency: "KES",
+      minimumFractionDigits: 0,
+    }).format(n);
 
   const formatDate = (d: string) =>
-    new Date(d).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" });
+    new Date(d).toLocaleDateString("en-KE", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
 
   if (status === "loading" || loading) {
     return (
@@ -112,10 +185,34 @@ export default function OrganizerDashboard() {
   const tabInfo = tabConfig[activeTab];
 
   const statCards = [
-    { label: "Total revenue", value: formatCurrency(totalRevenue), icon: TrendingUp, color: "from-green-500 to-emerald-600", change: "+12%" },
-    { label: "Tickets sold", value: totalTickets.toString(), icon: Ticket, color: "from-purple-500 to-blue-600", change: "+18%" },
-    { label: "Active events", value: published.toString(), icon: Calendar, color: "from-blue-500 to-cyan-600", change: `${events.length} total` },
-    { label: "Total events", value: events.length.toString(), icon: BarChart3, color: "from-amber-500 to-orange-500", change: "All time" },
+    {
+      label: "Total revenue",
+      value: formatCurrency(totalRevenue),
+      icon: TrendingUp,
+      color: "from-green-500 to-emerald-600",
+      change: "+12%",
+    },
+    {
+      label: "Tickets sold",
+      value: totalTickets.toString(),
+      icon: Ticket,
+      color: "from-purple-500 to-blue-600",
+      change: "+18%",
+    },
+    {
+      label: "Total attendees",
+      value: totalAttendees.toString(),
+      icon: Users,
+      color: "from-blue-500 to-cyan-600",
+      change: "Unique visitors",
+    },
+    {
+      label: "Upcoming events",
+      value: upcomingEvents.toString(),
+      icon: Calendar,
+      color: "from-amber-500 to-orange-500",
+      change: `${published} published`,
+    },
   ];
 
   return (
@@ -136,7 +233,10 @@ export default function OrganizerDashboard() {
       <Sidebar
         role="organizer"
         activeTab={activeTab}
-        setActiveTab={(tab) => { setActiveTab(tab as Tab); if (tab === "events") setShowNewEvent(false); }}
+        setActiveTab={(tab) => {
+          setActiveTab(tab as Tab);
+          if (tab === "events") setShowNewEvent(false);
+        }}
         userName={user?.name || "Organizer"}
         userEmail={user?.email || ""}
         mobileOpen={mobileMenuOpen}
@@ -163,7 +263,6 @@ export default function OrganizerDashboard() {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.18 }}
               >
-
                 {/* Overview */}
                 {activeTab === "overview" && (
                   <div className="space-y-6">
@@ -173,7 +272,9 @@ export default function OrganizerDashboard() {
                         <h2 className="text-lg font-bold text-white">
                           Good day, {user?.name?.split(" ")[0]} 👋
                         </h2>
-                        <p className="text-xs text-gray-500 mt-0.5">Here is what is happening with your events</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Here is what is happening with your events
+                        </p>
                       </div>
                       <Link
                         href="/dashboard/organizer/events/new"
@@ -195,7 +296,9 @@ export default function OrganizerDashboard() {
                           className="bg-gray-900 border border-gray-800 rounded-2xl p-4 hover:border-gray-700 transition-all"
                         >
                           <div className="flex items-center justify-between mb-3">
-                            <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center shadow-md`}>
+                            <div
+                              className={`w-8 h-8 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center shadow-md`}
+                            >
                               <s.icon className="w-4 h-4 text-white" />
                             </div>
                             <div className="flex items-center gap-1 text-xs text-green-400">
@@ -203,8 +306,12 @@ export default function OrganizerDashboard() {
                               <span>{s.change}</span>
                             </div>
                           </div>
-                          <p className="text-lg font-bold text-white">{s.value}</p>
-                          <p className="text-xs text-gray-600 mt-0.5">{s.label}</p>
+                          <p className="text-lg font-bold text-white">
+                            {s.value}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            {s.label}
+                          </p>
                         </motion.div>
                       ))}
                     </div>
@@ -213,8 +320,12 @@ export default function OrganizerDashboard() {
                     <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
                       <div className="flex items-center justify-between mb-5">
                         <div>
-                          <h3 className="text-sm font-bold text-white">Revenue trend</h3>
-                          <p className="text-xs text-gray-600 mt-0.5">Monthly ticket sales revenue</p>
+                          <h3 className="text-sm font-bold text-white">
+                            Revenue trend
+                          </h3>
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            Monthly ticket sales revenue
+                          </p>
                         </div>
                         <button
                           onClick={() => setActiveTab("analytics")}
@@ -223,22 +334,68 @@ export default function OrganizerDashboard() {
                           Full analytics →
                         </button>
                       </div>
-                      <Suspense fallback={<div className="h-40 bg-gray-800 rounded-xl animate-pulse" />}>
+                      <Suspense
+                        fallback={
+                          <div className="h-40 bg-gray-800 rounded-xl animate-pulse" />
+                        }
+                      >
                         <ResponsiveContainer width="100%" height={160}>
-                          <AreaChart data={chartData}>
+                          <AreaChart
+                            data={analyticsData?.monthlyData || chartData}
+                          >
                             <defs>
-                              <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                              <linearGradient
+                                id="revGrad"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="5%"
+                                  stopColor="#8b5cf6"
+                                  stopOpacity={0.3}
+                                />
+                                <stop
+                                  offset="95%"
+                                  stopColor="#8b5cf6"
+                                  stopOpacity={0}
+                                />
                               </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                            <XAxis dataKey="month" tick={{ fill: "#6b7280", fontSize: 11 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: "#6b7280", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                            <Tooltip
-                              contentStyle={{ background: "#1f2937", border: "1px solid #374151", borderRadius: "12px", fontSize: "12px", color: "#f9fafb" }}
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#1f2937"
                             />
-                            <Area type="monotone" dataKey="revenue" stroke="#8b5cf6" strokeWidth={2} fill="url(#revGrad)" name="Revenue (KES)" />
+                            <XAxis
+                              dataKey="month"
+                              tick={{ fill: "#6b7280", fontSize: 11 }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              tick={{ fill: "#6b7280", fontSize: 11 }}
+                              axisLine={false}
+                              tickLine={false}
+                              tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                background: "#1f2937",
+                                border: "1px solid #374151",
+                                borderRadius: "12px",
+                                fontSize: "12px",
+                                color: "#f9fafb",
+                              }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="revenue"
+                              stroke="#8b5cf6"
+                              strokeWidth={2}
+                              fill="url(#revGrad)"
+                              name="Revenue (KES)"
+                            />
                           </AreaChart>
                         </ResponsiveContainer>
                       </Suspense>
@@ -247,15 +404,24 @@ export default function OrganizerDashboard() {
                     {/* Recent events */}
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-bold text-white">Recent events</h3>
-                        <button onClick={() => setActiveTab("events")} className="text-xs text-purple-400 hover:text-purple-300 font-semibold">
+                        <h3 className="text-sm font-bold text-white">
+                          Recent events
+                        </h3>
+                        <button
+                          onClick={() => setActiveTab("events")}
+                          className="text-xs text-purple-400 hover:text-purple-300 font-semibold"
+                        >
                           View all →
                         </button>
                       </div>
                       <div className="space-y-2">
                         {events.slice(0, 4).map((event, i) => {
-                          const revenue = (event.orders || []).reduce((s, o) => s + o.total, 0);
-                          const sc = statusConfig[event.status] || statusConfig.DRAFT;
+                          const revenue = (event.orders || []).reduce(
+                            (s, o) => s + o.total,
+                            0,
+                          );
+                          const sc =
+                            statusConfig[event.status] || statusConfig.DRAFT;
                           return (
                             <motion.div
                               key={event.id}
@@ -265,17 +431,30 @@ export default function OrganizerDashboard() {
                               className="flex items-center gap-4 bg-gray-900 border border-gray-800 rounded-2xl px-4 py-3 hover:border-gray-700 transition-all"
                             >
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-white truncate">{event.title}</p>
-                                <p className="text-xs text-gray-600">{formatDate(event.date)} · {event.location}</p>
+                                <p className="text-sm font-semibold text-white truncate">
+                                  {event.title}
+                                </p>
+                                <p className="text-xs text-gray-600">
+                                  {formatDate(event.date)} · {event.location}
+                                </p>
                               </div>
-                              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${sc.className} flex-shrink-0`}>
+                              <span
+                                className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${sc.className} flex-shrink-0`}
+                              >
                                 {sc.label}
                               </span>
                               <div className="text-right flex-shrink-0">
-                                <p className="text-xs font-bold text-white">{event._count?.tickets || 0} tickets</p>
-                                <p className="text-xs text-gray-600">{formatCurrency(revenue)}</p>
+                                <p className="text-xs font-bold text-white">
+                                  {event._count?.tickets || 0} tickets
+                                </p>
+                                <p className="text-xs text-gray-600">
+                                  {formatCurrency(revenue)}
+                                </p>
                               </div>
-                              <Link href={`/event/${event.slug}/buy`} className="text-gray-600 hover:text-purple-400 transition-colors">
+                              <Link
+                                href={`/event/${event.slug}/buy`}
+                                className="text-gray-600 hover:text-purple-400 transition-colors"
+                              >
                                 <Eye className="w-4 h-4" />
                               </Link>
                             </motion.div>
@@ -284,12 +463,15 @@ export default function OrganizerDashboard() {
                         {events.length === 0 && (
                           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
                             <Calendar className="w-10 h-10 text-gray-700 mx-auto mb-3" />
-                            <p className="text-gray-400 font-medium text-sm">No events yet</p>
+                            <p className="text-gray-400 font-medium text-sm">
+                              No events yet
+                            </p>
                             <Link
                               href="/dashboard/organizer/events/new"
                               className="inline-flex items-center gap-1.5 mt-4 text-xs text-purple-400 hover:text-purple-300 font-semibold"
                             >
-                              <Plus className="w-3.5 h-3.5" /> Create your first event
+                              <Plus className="w-3.5 h-3.5" /> Create your first
+                              event
                             </Link>
                           </div>
                         )}
@@ -303,8 +485,12 @@ export default function OrganizerDashboard() {
                   <div>
                     <div className="flex items-center justify-between mb-6">
                       <div>
-                        <h2 className="text-base font-bold text-white">My Events</h2>
-                        <p className="text-xs text-gray-600 mt-0.5">{events.length} events total</p>
+                        <h2 className="text-base font-bold text-white">
+                          My Events
+                        </h2>
+                        <p className="text-xs text-gray-600 mt-0.5">
+                          {events.length} events total
+                        </p>
                       </div>
                       <Link
                         href="/dashboard/organizer/events/new"
@@ -318,8 +504,12 @@ export default function OrganizerDashboard() {
                       {events.length === 0 ? (
                         <div className="p-16 text-center">
                           <Calendar className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-                          <p className="text-gray-300 font-semibold">No events yet</p>
-                          <p className="text-gray-600 text-sm mt-2 mb-6">Create your first event to start selling tickets</p>
+                          <p className="text-gray-300 font-semibold">
+                            No events yet
+                          </p>
+                          <p className="text-gray-600 text-sm mt-2 mb-6">
+                            Create your first event to start selling tickets
+                          </p>
                           <Link
                             href="/dashboard/organizer/events/new"
                             className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-all"
@@ -332,8 +522,18 @@ export default function OrganizerDashboard() {
                           <table className="w-full">
                             <thead>
                               <tr className="border-b border-gray-800">
-                                {["Event", "Date", "Status", "Tickets", "Revenue", ""].map((h) => (
-                                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                {[
+                                  "Event",
+                                  "Date",
+                                  "Status",
+                                  "Tickets",
+                                  "Revenue",
+                                  "",
+                                ].map((h) => (
+                                  <th
+                                    key={h}
+                                    className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                                  >
                                     {h}
                                   </th>
                                 ))}
@@ -341,8 +541,13 @@ export default function OrganizerDashboard() {
                             </thead>
                             <tbody>
                               {events.map((event, i) => {
-                                const revenue = (event.orders || []).reduce((s, o) => s + o.total, 0);
-                                const sc = statusConfig[event.status] || statusConfig.DRAFT;
+                                const revenue = (event.orders || []).reduce(
+                                  (s, o) => s + o.total,
+                                  0,
+                                );
+                                const sc =
+                                  statusConfig[event.status] ||
+                                  statusConfig.DRAFT;
                                 return (
                                   <motion.tr
                                     key={event.id}
@@ -352,19 +557,34 @@ export default function OrganizerDashboard() {
                                     className="border-b border-gray-800/50 hover:bg-white/[0.02] transition-colors"
                                   >
                                     <td className="px-4 py-3">
-                                      <p className="text-sm font-semibold text-white">{event.title}</p>
-                                      <p className="text-xs text-gray-600">{event.location}</p>
+                                      <p className="text-sm font-semibold text-white">
+                                        {event.title}
+                                      </p>
+                                      <p className="text-xs text-gray-600">
+                                        {event.location}
+                                      </p>
                                     </td>
-                                    <td className="px-4 py-3 text-xs text-gray-400">{formatDate(event.date)}</td>
+                                    <td className="px-4 py-3 text-xs text-gray-400">
+                                      {formatDate(event.date)}
+                                    </td>
                                     <td className="px-4 py-3">
-                                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${sc.className}`}>
+                                      <span
+                                        className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${sc.className}`}
+                                      >
                                         {sc.label}
                                       </span>
                                     </td>
-                                    <td className="px-4 py-3 text-xs font-bold text-white">{event._count?.tickets || 0}</td>
-                                    <td className="px-4 py-3 text-xs font-bold text-green-400">{formatCurrency(revenue)}</td>
+                                    <td className="px-4 py-3 text-xs font-bold text-white">
+                                      {event._count?.tickets || 0}
+                                    </td>
+                                    <td className="px-4 py-3 text-xs font-bold text-green-400">
+                                      {formatCurrency(revenue)}
+                                    </td>
                                     <td className="px-4 py-3">
-                                      <Link href={`/event/${event.slug}/buy`} className="text-gray-600 hover:text-purple-400 transition-colors">
+                                      <Link
+                                        href={`/event/${event.slug}/buy`}
+                                        className="text-gray-600 hover:text-purple-400 transition-colors"
+                                      >
                                         <Eye className="w-4 h-4" />
                                       </Link>
                                     </td>
@@ -384,33 +604,102 @@ export default function OrganizerDashboard() {
                   <div className="space-y-6">
                     <div className="grid grid-cols-3 gap-4">
                       {[
-                        { label: "Total revenue", value: formatCurrency(totalRevenue), color: "text-green-400" },
-                        { label: "Tickets sold", value: totalTickets, color: "text-purple-400" },
-                        { label: "Avg per event", value: events.length > 0 ? Math.round(totalTickets / events.length) : 0, color: "text-blue-400" },
+                        {
+                          label: "Total revenue",
+                          value: formatCurrency(totalRevenue),
+                          color: "text-green-400",
+                        },
+                        {
+                          label: "Tickets sold",
+                          value: totalTickets,
+                          color: "text-purple-400",
+                        },
+                        {
+                          label: "Avg per event",
+                          value:
+                            events.length > 0
+                              ? Math.round(totalTickets / events.length)
+                              : 0,
+                          color: "text-blue-400",
+                        },
                       ].map((s) => (
-                        <div key={s.label} className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-                          <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-                          <p className="text-xs text-gray-600 mt-1">{s.label}</p>
+                        <div
+                          key={s.label}
+                          className="bg-gray-900 border border-gray-800 rounded-2xl p-5"
+                        >
+                          <p className={`text-2xl font-bold ${s.color}`}>
+                            {s.value}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            {s.label}
+                          </p>
                         </div>
                       ))}
                     </div>
 
                     <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-                      <h3 className="text-sm font-bold text-white mb-5">Ticket sales over time</h3>
-                      <Suspense fallback={<div className="h-56 bg-gray-800 rounded-xl animate-pulse" />}>
+                      <h3 className="text-sm font-bold text-white mb-5">
+                        Ticket sales over time
+                      </h3>
+                      <Suspense
+                        fallback={
+                          <div className="h-56 bg-gray-800 rounded-xl animate-pulse" />
+                        }
+                      >
                         <ResponsiveContainer width="100%" height={220}>
                           <AreaChart data={chartData}>
                             <defs>
-                              <linearGradient id="ticketGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                              <linearGradient
+                                id="ticketGrad"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="5%"
+                                  stopColor="#8b5cf6"
+                                  stopOpacity={0.3}
+                                />
+                                <stop
+                                  offset="95%"
+                                  stopColor="#8b5cf6"
+                                  stopOpacity={0}
+                                />
                               </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                            <XAxis dataKey="month" tick={{ fill: "#6b7280", fontSize: 11 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: "#6b7280", fontSize: 11 }} axisLine={false} tickLine={false} />
-                            <Tooltip contentStyle={{ background: "#1f2937", border: "1px solid #374151", borderRadius: "12px", fontSize: "12px", color: "#f9fafb" }} />
-                            <Area type="monotone" dataKey="tickets" stroke="#8b5cf6" strokeWidth={2} fill="url(#ticketGrad)" name="Tickets sold" />
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#1f2937"
+                            />
+                            <XAxis
+                              dataKey="month"
+                              tick={{ fill: "#6b7280", fontSize: 11 }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              tick={{ fill: "#6b7280", fontSize: 11 }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                background: "#1f2937",
+                                border: "1px solid #374151",
+                                borderRadius: "12px",
+                                fontSize: "12px",
+                                color: "#f9fafb",
+                              }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="tickets"
+                              stroke="#8b5cf6"
+                              strokeWidth={2}
+                              fill="url(#ticketGrad)"
+                              name="Tickets sold"
+                            />
                           </AreaChart>
                         </ResponsiveContainer>
                       </Suspense>
@@ -425,15 +714,50 @@ export default function OrganizerDashboard() {
 
                 {/* Settings tab */}
                 {activeTab === "settings" && (
-                  <div className="bg-gray-900 border border-gray-800 rounded-2xl p-16 text-center">
+                  <div className="bg-gray-900 border border-gray-800 rounded-2xl p-10 text-center">
                     <div className="w-14 h-14 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
                       <Settings className="w-7 h-7 text-gray-600" />
                     </div>
-                    <p className="text-gray-300 font-semibold text-base">Account settings</p>
-                    <p className="text-gray-600 text-sm mt-2">Profile and notification preferences coming soon.</p>
+                    <p className="text-gray-300 font-semibold text-base">
+                      Platform settings
+                    </p>
+                    <p className="text-gray-600 text-sm mt-2">
+                      Review the current commission rate applied to your ticket
+                      sales.
+                    </p>
+
+                    {loading ? (
+                      <p className="text-gray-500 text-sm mt-4">
+                        Loading platform settings...
+                      </p>
+                    ) : settingsData?.commissionRule ? (
+                      <div className="mt-6 rounded-3xl border border-gray-800 bg-gray-950 p-6 text-left max-w-xl mx-auto">
+                        <p className="text-xs uppercase tracking-[0.18em] text-gray-500 font-semibold">
+                          Active platform commission
+                        </p>
+                        <p className="mt-3 text-white text-lg font-semibold">
+                          {settingsData.commissionRule.name}
+                        </p>
+                        <p className="mt-2 text-gray-400">
+                          {settingsData.commissionRule.feePercent}% + KES{" "}
+                          {settingsData.commissionRule.feeFixed} per ticket
+                        </p>
+                        <p className="mt-2 text-gray-500 text-sm">
+                          Minimum ticket price: KES{" "}
+                          {settingsData.commissionRule.minTicketPrice}
+                        </p>
+                        <p className="mt-4 text-gray-400 text-sm">
+                          These settings are controlled by the platform admin
+                          and apply to all ticket sales.
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-sm mt-4">
+                        No active platform commission rule is configured yet.
+                      </p>
+                    )}
                   </div>
                 )}
-
               </motion.div>
             </AnimatePresence>
           </div>

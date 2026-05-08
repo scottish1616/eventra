@@ -3,9 +3,16 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  MessageSquare, AlertTriangle, Clock,
-  CheckCircle, ArrowUpCircle, Filter,
-  Send, ChevronDown, ChevronUp, Search
+  MessageSquare,
+  AlertTriangle,
+  Clock,
+  CheckCircle,
+  ArrowUpCircle,
+  Filter,
+  Send,
+  ChevronDown,
+  ChevronUp,
+  Search,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import type { Complaint, ComplaintReply } from "./types";
@@ -16,16 +23,41 @@ interface Props {
 }
 
 const statusConfig = {
-  PENDING: { label: "Pending", icon: Clock, className: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
-  IN_PROGRESS: { label: "In Progress", icon: AlertTriangle, className: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
-  RESOLVED: { label: "Resolved", icon: CheckCircle, className: "bg-green-500/10 text-green-400 border-green-500/20" },
-  ESCALATED: { label: "Escalated", icon: ArrowUpCircle, className: "bg-red-500/10 text-red-400 border-red-500/20" },
+  PENDING: {
+    label: "Pending",
+    icon: Clock,
+    className: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+  },
+  IN_PROGRESS: {
+    label: "In Progress",
+    icon: AlertTriangle,
+    className: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  },
+  RESOLVED: {
+    label: "Resolved",
+    icon: CheckCircle,
+    className: "bg-green-500/10 text-green-400 border-green-500/20",
+  },
+  ESCALATED: {
+    label: "Escalated",
+    icon: ArrowUpCircle,
+    className: "bg-red-500/10 text-red-400 border-red-500/20",
+  },
 };
 
 const priorityConfig = {
-  LOW: { label: "Low", className: "bg-gray-500/10 text-gray-400 border-gray-500/20" },
-  MEDIUM: { label: "Medium", className: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
-  HIGH: { label: "High", className: "bg-red-500/10 text-red-400 border-red-500/20" },
+  LOW: {
+    label: "Low",
+    className: "bg-gray-500/10 text-gray-400 border-gray-500/20",
+  },
+  MEDIUM: {
+    label: "Medium",
+    className: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+  },
+  HIGH: {
+    label: "High",
+    className: "bg-red-500/10 text-red-400 border-red-500/20",
+  },
 };
 
 const categoryLabels = {
@@ -56,12 +88,14 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [replyLoading, setReplyLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const sampleComplaints: Complaint[] = [
     {
       id: "c1",
       title: "Payment deducted but no ticket received",
-      description: "I paid KES 2500 via M-Pesa but did not receive my ticket confirmation. Reference: QJD7Y8X2",
+      description:
+        "I paid KES 2500 via M-Pesa but did not receive my ticket confirmation. Reference: QJD7Y8X2",
       category: "PAYMENT",
       priority: "HIGH",
       status: "PENDING",
@@ -77,13 +111,17 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
       resolvedAt: null,
       createdAt: new Date(Date.now() - 3600000).toISOString(),
       updatedAt: new Date().toISOString(),
-      event: { title: "Nairobi Tech Summit 2025", slug: "nairobi-tech-summit-2025" },
+      event: {
+        title: "Nairobi Tech Summit 2025",
+        slug: "nairobi-tech-summit-2025",
+      },
       replies: [],
     },
     {
       id: "c2",
       title: "QR code not scanning at venue",
-      description: "My ticket QR code is not being scanned at the venue entrance. Ticket number: NAI-2025-543210",
+      description:
+        "My ticket QR code is not being scanned at the venue entrance. Ticket number: NAI-2025-543210",
       category: "TICKET",
       priority: "HIGH",
       status: "IN_PROGRESS",
@@ -99,12 +137,16 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
       resolvedAt: null,
       createdAt: new Date(Date.now() - 7200000).toISOString(),
       updatedAt: new Date().toISOString(),
-      event: { title: "Mombasa Music Festival 2025", slug: "mombasa-music-festival-2025" },
+      event: {
+        title: "Mombasa Music Festival 2025",
+        slug: "mombasa-music-festival-2025",
+      },
       replies: [
         {
           id: "r1",
           complaintId: "c2",
-          message: "We are investigating the issue with your QR code. Please wait at the entrance.",
+          message:
+            "We are investigating the issue with your QR code. Please wait at the entrance.",
           senderName: "Jane Wanjiru",
           senderRole: "ORGANIZER",
           createdAt: new Date(Date.now() - 3600000).toISOString(),
@@ -114,7 +156,8 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
     {
       id: "c3",
       title: "Event cancelled without refund",
-      description: "The event was cancelled but I have not received any refund for my tickets purchased.",
+      description:
+        "The event was cancelled but I have not received any refund for my tickets purchased.",
       category: "EVENT_ISSUE",
       priority: "HIGH",
       status: "ESCALATED",
@@ -130,17 +173,62 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
       resolvedAt: null,
       createdAt: new Date(Date.now() - 86400000).toISOString(),
       updatedAt: new Date().toISOString(),
-      event: { title: "Kisumu Startup Pitch Night", slug: "kisumu-startup-pitch-2025" },
+      event: {
+        title: "Kisumu Startup Pitch Night",
+        slug: "kisumu-startup-pitch-2025",
+      },
       replies: [],
     },
   ];
 
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setComplaints(sampleComplaints);
-      setLoading(false);
-    }, 800);
+    const normalizeStatus = (status: string) => {
+      if (status === "OPEN") return "PENDING" as Complaint["status"];
+      if (
+        ["PENDING", "IN_PROGRESS", "RESOLVED", "ESCALATED"].includes(status)
+      ) {
+        return status as Complaint["status"];
+      }
+      return "PENDING" as Complaint["status"];
+    };
+
+    const loadComplaints = async () => {
+      setLoading(true);
+      setApiError(null);
+      try {
+        const res = await fetch("/api/complaints");
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          throw new Error(json.error || "Failed to load complaints");
+        }
+
+        const data = (json.data || []).map((complaint: any) => ({
+          ...complaint,
+          status: normalizeStatus(complaint.status),
+          priority: complaint.priority || "LOW",
+          category: complaint.category || "OTHER",
+          type: complaint.type || "ATTENDEE",
+          complainantEmail: complaint.complainantEmail ?? null,
+          complainantPhone: complaint.complainantPhone ?? null,
+          event: complaint.event || null,
+          replies: complaint.replies || [],
+          createdAt: complaint.createdAt || new Date().toISOString(),
+          updatedAt: complaint.updatedAt || new Date().toISOString(),
+        }));
+
+        setComplaints(data);
+      } catch (error) {
+        console.error("[ComplaintsCenter]", error);
+        setApiError(
+          error instanceof Error ? error.message : "Failed to load complaints",
+        );
+        setComplaints(sampleComplaints);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadComplaints();
   }, []);
 
   const filtered = complaints.filter((c) => {
@@ -166,20 +254,29 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
     setComplaints((prev) =>
       prev.map((c) =>
         c.id === complaintId
-          ? { ...c, replies: [...(c.replies || []), newReply], status: "IN_PROGRESS" }
-          : c
-      )
+          ? {
+              ...c,
+              replies: [...(c.replies || []), newReply],
+              status: "IN_PROGRESS",
+            }
+          : c,
+      ),
     );
     setReplyText("");
     setReplyLoading(false);
     toast.success("Reply sent");
   };
 
-  const handleStatusChange = async (complaintId: string, newStatus: Complaint["status"]) => {
+  const handleStatusChange = async (
+    complaintId: string,
+    newStatus: Complaint["status"],
+  ) => {
     setComplaints((prev) =>
-      prev.map((c) => c.id === complaintId ? { ...c, status: newStatus } : c)
+      prev.map((c) => (c.id === complaintId ? { ...c, status: newStatus } : c)),
     );
-    toast.success(`Complaint marked as ${newStatus.toLowerCase().replace("_", " ")}`);
+    toast.success(
+      `Complaint marked as ${newStatus.toLowerCase().replace("_", " ")}`,
+    );
   };
 
   const timeAgo = (date: string) => {
@@ -209,7 +306,10 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
           { label: "Escalated", value: stats.escalated, color: "text-red-400" },
           { label: "Resolved", value: stats.resolved, color: "text-green-400" },
         ].map((s) => (
-          <div key={s.label} className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+          <div
+            key={s.label}
+            className="bg-gray-900 border border-gray-800 rounded-2xl p-4"
+          >
             <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
             <p className="text-xs text-gray-600 mt-0.5">{s.label} complaints</p>
           </div>
@@ -230,21 +330,33 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
         </div>
         <div className="flex items-center gap-1.5">
           <Filter className="w-3.5 h-3.5 text-gray-500" />
-          {["ALL", "PENDING", "IN_PROGRESS", "ESCALATED", "RESOLVED"].map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                statusFilter === s
-                  ? "bg-purple-600 text-white"
-                  : "bg-gray-800 text-gray-500 hover:text-white hover:bg-gray-700"
-              }`}
-            >
-              {s === "ALL" ? "All" : s === "IN_PROGRESS" ? "In Progress" : s.charAt(0) + s.slice(1).toLowerCase()}
-            </button>
-          ))}
+          {["ALL", "PENDING", "IN_PROGRESS", "ESCALATED", "RESOLVED"].map(
+            (s) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  statusFilter === s
+                    ? "bg-purple-600 text-white"
+                    : "bg-gray-800 text-gray-500 hover:text-white hover:bg-gray-700"
+                }`}
+              >
+                {s === "ALL"
+                  ? "All"
+                  : s === "IN_PROGRESS"
+                    ? "In Progress"
+                    : s.charAt(0) + s.slice(1).toLowerCase()}
+              </button>
+            ),
+          )}
         </div>
       </div>
+
+      {apiError && (
+        <div className="mb-5 rounded-2xl border border-red-800 bg-red-950/70 px-4 py-3 text-sm text-red-300">
+          {apiError}
+        </div>
+      )}
 
       {/* Complaints list */}
       <div className="space-y-3">
@@ -255,7 +367,9 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
             <MessageSquare className="w-10 h-10 text-gray-700 mx-auto mb-3" />
             <p className="text-gray-400 font-medium">No complaints found</p>
             <p className="text-gray-600 text-xs mt-1">
-              {statusFilter !== "ALL" ? `No ${statusFilter.toLowerCase()} complaints` : "All clear!"}
+              {statusFilter !== "ALL"
+                ? `No ${statusFilter.toLowerCase()} complaints`
+                : "All clear!"}
             </p>
           </div>
         ) : (
@@ -276,34 +390,50 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
                 {/* Header */}
                 <div
                   className="p-4 cursor-pointer"
-                  onClick={() => setExpandedId(isExpanded ? null : complaint.id)}
+                  onClick={() =>
+                    setExpandedId(isExpanded ? null : complaint.id)
+                  }
                 >
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${sc.className}`}>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${sc.className}`}
+                        >
                           <StatusIcon className="w-3 h-3" />
                           {sc.label}
                         </span>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${pc.className}`}>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${pc.className}`}
+                        >
                           {pc.label}
                         </span>
                         <span className="text-xs text-gray-600 bg-gray-800 px-2 py-0.5 rounded-full">
                           {categoryLabels[complaint.category]}
                         </span>
                       </div>
-                      <p className="text-sm font-semibold text-white truncate">{complaint.title}</p>
+                      <p className="text-sm font-semibold text-white truncate">
+                        {complaint.title}
+                      </p>
                     </div>
                     <button className="text-gray-600 hover:text-gray-300 flex-shrink-0">
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      {isExpanded ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
 
                   <div className="flex items-center gap-4 text-xs text-gray-600">
                     <span>👤 {complaint.complainantName}</span>
-                    {complaint.complainantPhone && <span>📱 {complaint.complainantPhone}</span>}
+                    {complaint.complainantPhone && (
+                      <span>📱 {complaint.complainantPhone}</span>
+                    )}
                     {complaint.event && <span>🎪 {complaint.event.title}</span>}
-                    <span className="ml-auto">{timeAgo(complaint.createdAt)}</span>
+                    <span className="ml-auto">
+                      {timeAgo(complaint.createdAt)}
+                    </span>
                   </div>
                 </div>
 
@@ -320,8 +450,12 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
                       <div className="px-4 pb-4 border-t border-gray-800 pt-4">
                         {/* Description */}
                         <div className="bg-gray-800/50 rounded-xl p-3 mb-4">
-                          <p className="text-xs font-semibold text-gray-400 mb-1">Complaint description</p>
-                          <p className="text-sm text-gray-200 leading-relaxed">{complaint.description}</p>
+                          <p className="text-xs font-semibold text-gray-400 mb-1">
+                            Complaint description
+                          </p>
+                          <p className="text-sm text-gray-200 leading-relaxed">
+                            {complaint.description}
+                          </p>
                         </div>
 
                         {/* Replies thread */}
@@ -335,25 +469,32 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
                                 key={reply.id}
                                 className={`flex gap-3 ${reply.senderRole === "ATTENDEE" ? "" : "flex-row-reverse"}`}
                               >
-                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                                  reply.senderRole === "ADMIN"
-                                    ? "bg-red-500/20 text-red-400"
-                                    : reply.senderRole === "ORGANIZER"
-                                    ? "bg-purple-500/20 text-purple-400"
-                                    : "bg-gray-700 text-gray-400"
-                                }`}>
+                                <div
+                                  className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                                    reply.senderRole === "ADMIN"
+                                      ? "bg-red-500/20 text-red-400"
+                                      : reply.senderRole === "ORGANIZER"
+                                        ? "bg-purple-500/20 text-purple-400"
+                                        : "bg-gray-700 text-gray-400"
+                                  }`}
+                                >
                                   {reply.senderName.charAt(0).toUpperCase()}
                                 </div>
-                                <div className={`flex-1 max-w-xs ${reply.senderRole !== "ATTENDEE" ? "text-right" : ""}`}>
-                                  <div className={`inline-block px-3 py-2 rounded-2xl text-xs leading-relaxed ${
-                                    reply.senderRole === "ATTENDEE"
-                                      ? "bg-gray-800 text-gray-200"
-                                      : "bg-purple-600/20 text-purple-200 border border-purple-500/20"
-                                  }`}>
+                                <div
+                                  className={`flex-1 max-w-xs ${reply.senderRole !== "ATTENDEE" ? "text-right" : ""}`}
+                                >
+                                  <div
+                                    className={`inline-block px-3 py-2 rounded-2xl text-xs leading-relaxed ${
+                                      reply.senderRole === "ATTENDEE"
+                                        ? "bg-gray-800 text-gray-200"
+                                        : "bg-purple-600/20 text-purple-200 border border-purple-500/20"
+                                    }`}
+                                  >
                                     {reply.message}
                                   </div>
                                   <p className="text-xs text-gray-700 mt-1">
-                                    {reply.senderName} · {timeAgo(reply.createdAt)}
+                                    {reply.senderName} ·{" "}
+                                    {timeAgo(reply.createdAt)}
                                   </p>
                                 </div>
                               </div>
@@ -365,28 +506,42 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
                         <div className="flex items-center gap-2 mb-3 flex-wrap">
                           {complaint.status !== "RESOLVED" && (
                             <button
-                              onClick={() => handleStatusChange(complaint.id, "RESOLVED")}
+                              onClick={() =>
+                                handleStatusChange(complaint.id, "RESOLVED")
+                              }
                               className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded-xl text-xs font-semibold transition-all"
                             >
-                              <CheckCircle className="w-3.5 h-3.5" /> Mark resolved
+                              <CheckCircle className="w-3.5 h-3.5" /> Mark
+                              resolved
                             </button>
                           )}
-                          {complaint.status !== "ESCALATED" && complaint.status !== "RESOLVED" && (
-                            <button
-                              onClick={() => handleStatusChange(complaint.id, "ESCALATED")}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-semibold transition-all"
-                            >
-                              <ArrowUpCircle className="w-3.5 h-3.5" /> Escalate to admin
-                            </button>
-                          )}
-                          {complaint.status !== "IN_PROGRESS" && complaint.status !== "RESOLVED" && (
-                            <button
-                              onClick={() => handleStatusChange(complaint.id, "IN_PROGRESS")}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-xl text-xs font-semibold transition-all"
-                            >
-                              <AlertTriangle className="w-3.5 h-3.5" /> Mark in progress
-                            </button>
-                          )}
+                          {complaint.status !== "ESCALATED" &&
+                            complaint.status !== "RESOLVED" && (
+                              <button
+                                onClick={() =>
+                                  handleStatusChange(complaint.id, "ESCALATED")
+                                }
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-semibold transition-all"
+                              >
+                                <ArrowUpCircle className="w-3.5 h-3.5" />{" "}
+                                Escalate to admin
+                              </button>
+                            )}
+                          {complaint.status !== "IN_PROGRESS" &&
+                            complaint.status !== "RESOLVED" && (
+                              <button
+                                onClick={() =>
+                                  handleStatusChange(
+                                    complaint.id,
+                                    "IN_PROGRESS",
+                                  )
+                                }
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-xl text-xs font-semibold transition-all"
+                              >
+                                <AlertTriangle className="w-3.5 h-3.5" /> Mark
+                                in progress
+                              </button>
+                            )}
                         </div>
 
                         {/* Reply input */}

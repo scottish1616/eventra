@@ -6,7 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 }
 
@@ -35,7 +35,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           const isValid = await compare(
             credentials.password as string,
-            data.password
+            data.password,
           );
           if (!isValid) return null;
 
@@ -63,7 +63,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (token && session.user) {
-        (session.user as any).id = token.id;
+        session.user.id = token.id as string;
         (session.user as any).role = token.role;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
