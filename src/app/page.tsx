@@ -588,7 +588,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="text-center">
+            <div className="text-center space-y-3">
               <button
                 onClick={() => setActiveSection("events")}
                 className="btn-primary inline-flex items-center gap-2 text-base px-8 py-4"
@@ -598,6 +598,12 @@ export default function HomePage() {
               >
                 Browse events <ArrowRight className="w-5 h-5" />
               </button>
+              <Link
+                href="/complaints/new"
+                className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
+              >
+                Submit a complaint
+              </Link>
             </div>
           </div>
         )}

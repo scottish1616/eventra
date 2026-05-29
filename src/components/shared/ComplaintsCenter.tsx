@@ -3,71 +3,68 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  MessageSquare,
-  AlertTriangle,
-  Clock,
-  CheckCircle,
-  ArrowUpCircle,
-  Filter,
-  Send,
-  ChevronDown,
-  ChevronUp,
-  Search,
+  MessageSquare, AlertTriangle, Clock,
+  CheckCircle, ArrowUpCircle, Filter,
+  Send, ChevronDown, ChevronUp, Search,
+  User, Calendar
 } from "lucide-react";
 import toast from "react-hot-toast";
-import type { Complaint, ComplaintReply } from "./types";
+
+interface ComplaintReply {
+  id: string;
+  complaintId: string;
+  message: string;
+  senderName: string;
+  senderRole: string;
+  createdAt: string;
+}
+
+interface Complaint {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  priority: string;
+  status: string;
+  assignedTo: string;
+  complainantName: string;
+  complainantPhone: string | null;
+  complainantEmail: string | null;
+  eventId: string | null;
+  organizerId: string | null;
+  escalatedAt: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  event: { id: string; title: string; slug: string } | null;
+  organizer: { id: string; name: string; organizationName: string | null } | null;
+  replies: ComplaintReply[];
+}
 
 interface Props {
-  role: "admin" | "organizer" | "attendee";
-  organizerId?: string;
+  role: "admin" | "organizer";
 }
 
 const statusConfig = {
-  PENDING: {
-    label: "Pending",
-    icon: Clock,
-    className: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  },
-  IN_PROGRESS: {
-    label: "In Progress",
-    icon: AlertTriangle,
-    className: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  },
-  RESOLVED: {
-    label: "Resolved",
-    icon: CheckCircle,
-    className: "bg-green-500/10 text-green-400 border-green-500/20",
-  },
-  ESCALATED: {
-    label: "Escalated",
-    icon: ArrowUpCircle,
-    className: "bg-red-500/10 text-red-400 border-red-500/20",
-  },
+  PENDING: { label: "Pending", icon: Clock, className: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
+  IN_PROGRESS: { label: "In Progress", icon: AlertTriangle, className: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+  RESOLVED: { label: "Resolved", icon: CheckCircle, className: "bg-green-500/10 text-green-400 border-green-500/20" },
+  ESCALATED: { label: "Escalated to Admin", icon: ArrowUpCircle, className: "bg-red-500/10 text-red-400 border-red-500/20" },
 };
 
 const priorityConfig = {
-  LOW: {
-    label: "Low",
-    className: "bg-gray-500/10 text-gray-400 border-gray-500/20",
-  },
-  MEDIUM: {
-    label: "Medium",
-    className: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  },
-  HIGH: {
-    label: "High",
-    className: "bg-red-500/10 text-red-400 border-red-500/20",
-  },
+  LOW: { label: "Low", className: "bg-gray-500/10 text-gray-400 border-gray-500/20" },
+  MEDIUM: { label: "Medium", className: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
+  HIGH: { label: "High", className: "bg-red-500/10 text-red-400 border-red-500/20" },
 };
 
-const categoryLabels = {
-  PAYMENT: "Payment Issue",
-  TICKET: "Ticket Problem",
+const categoryLabels: Record<string, string> = {
+  PAYMENT: "Payment",
+  TICKET: "Ticket",
   EVENT_ISSUE: "Event Issue",
   OTHER: "Other",
 };
 
-function ComplaintSkeleton() {
+function SkeletonComplaint() {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 animate-pulse">
       <div className="flex items-start justify-between mb-3">
@@ -80,203 +77,81 @@ function ComplaintSkeleton() {
   );
 }
 
-export function ComplaintsCenter({ role, organizerId }: Props) {
+export function ComplaintsCenter({ role }: Props) {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState("");
-  const [replyLoading, setReplyLoading] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
-
-  const sampleComplaints: Complaint[] = [
-    {
-      id: "c1",
-      title: "Payment deducted but no ticket received",
-      description:
-        "I paid KES 2500 via M-Pesa but did not receive my ticket confirmation. Reference: QJD7Y8X2",
-      category: "PAYMENT",
-      priority: "HIGH",
-      status: "PENDING",
-      type: "ATTENDEE",
-      complainantName: "James Mwangi",
-      complainantPhone: "0712345678",
-      complainantEmail: null,
-      eventId: null,
-      organizerId: null,
-      resolvedBy: null,
-      response: null,
-      escalatedAt: null,
-      resolvedAt: null,
-      createdAt: new Date(Date.now() - 3600000).toISOString(),
-      updatedAt: new Date().toISOString(),
-      event: {
-        title: "Nairobi Tech Summit 2025",
-        slug: "nairobi-tech-summit-2025",
-      },
-      replies: [],
-    },
-    {
-      id: "c2",
-      title: "QR code not scanning at venue",
-      description:
-        "My ticket QR code is not being scanned at the venue entrance. Ticket number: NAI-2025-543210",
-      category: "TICKET",
-      priority: "HIGH",
-      status: "IN_PROGRESS",
-      type: "ATTENDEE",
-      complainantName: "Sarah Odhiambo",
-      complainantPhone: "0722345678",
-      complainantEmail: null,
-      eventId: null,
-      organizerId: null,
-      resolvedBy: null,
-      response: "We are looking into this issue right now.",
-      escalatedAt: null,
-      resolvedAt: null,
-      createdAt: new Date(Date.now() - 7200000).toISOString(),
-      updatedAt: new Date().toISOString(),
-      event: {
-        title: "Mombasa Music Festival 2025",
-        slug: "mombasa-music-festival-2025",
-      },
-      replies: [
-        {
-          id: "r1",
-          complaintId: "c2",
-          message:
-            "We are investigating the issue with your QR code. Please wait at the entrance.",
-          senderName: "Jane Wanjiru",
-          senderRole: "ORGANIZER",
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-        },
-      ],
-    },
-    {
-      id: "c3",
-      title: "Event cancelled without refund",
-      description:
-        "The event was cancelled but I have not received any refund for my tickets purchased.",
-      category: "EVENT_ISSUE",
-      priority: "HIGH",
-      status: "ESCALATED",
-      type: "ATTENDEE",
-      complainantName: "Peter Kamau",
-      complainantPhone: "0733345678",
-      complainantEmail: null,
-      eventId: null,
-      organizerId: null,
-      resolvedBy: null,
-      response: null,
-      escalatedAt: new Date(Date.now() - 1800000).toISOString(),
-      resolvedAt: null,
-      createdAt: new Date(Date.now() - 86400000).toISOString(),
-      updatedAt: new Date().toISOString(),
-      event: {
-        title: "Kisumu Startup Pitch Night",
-        slug: "kisumu-startup-pitch-2025",
-      },
-      replies: [],
-    },
-  ];
+  const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    const normalizeStatus = (status: string) => {
-      if (status === "OPEN") return "PENDING" as Complaint["status"];
-      if (
-        ["PENDING", "IN_PROGRESS", "RESOLVED", "ESCALATED"].includes(status)
-      ) {
-        return status as Complaint["status"];
-      }
-      return "PENDING" as Complaint["status"];
-    };
-
-    const loadComplaints = async () => {
-      setLoading(true);
-      setApiError(null);
-      try {
-        const res = await fetch("/api/complaints");
-        const json = await res.json();
-        if (!res.ok || !json.success) {
-          throw new Error(json.error || "Failed to load complaints");
-        }
-
-        const data = (json.data || []).map((complaint: any) => ({
-          ...complaint,
-          status: normalizeStatus(complaint.status),
-          priority: complaint.priority || "LOW",
-          category: complaint.category || "OTHER",
-          type: complaint.type || "ATTENDEE",
-          complainantEmail: complaint.complainantEmail ?? null,
-          complainantPhone: complaint.complainantPhone ?? null,
-          event: complaint.event || null,
-          replies: complaint.replies || [],
-          createdAt: complaint.createdAt || new Date().toISOString(),
-          updatedAt: complaint.updatedAt || new Date().toISOString(),
-        }));
-
-        setComplaints(data);
-      } catch (error) {
-        console.error("[ComplaintsCenter]", error);
-        setApiError(
-          error instanceof Error ? error.message : "Failed to load complaints",
-        );
-        setComplaints(sampleComplaints);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadComplaints();
-  }, []);
+  }, [statusFilter]);
 
-  const filtered = complaints.filter((c) => {
-    const matchSearch =
-      c.title.toLowerCase().includes(search.toLowerCase()) ||
-      c.complainantName.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === "ALL" || c.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
-
-  const handleReply = async (complaintId: string) => {
-    if (!replyText.trim()) return;
-    setReplyLoading(true);
-    await new Promise((r) => setTimeout(r, 600));
-    const newReply: ComplaintReply = {
-      id: Math.random().toString(36).slice(2),
-      complaintId,
-      message: replyText.trim(),
-      senderName: role === "admin" ? "Admin" : "Organizer",
-      senderRole: role.toUpperCase(),
-      createdAt: new Date().toISOString(),
-    };
-    setComplaints((prev) =>
-      prev.map((c) =>
-        c.id === complaintId
-          ? {
-              ...c,
-              replies: [...(c.replies || []), newReply],
-              status: "IN_PROGRESS",
-            }
-          : c,
-      ),
-    );
-    setReplyText("");
-    setReplyLoading(false);
-    toast.success("Reply sent");
+  const loadComplaints = async () => {
+    setLoading(true);
+    try {
+      const url =
+        statusFilter !== "ALL"
+          ? `/api/complaints?status=${statusFilter}`
+          : "/api/complaints";
+      const res = await fetch(url);
+      const json = await res.json();
+      if (json.success) setComplaints(json.data || []);
+    } catch {
+      toast.error("Failed to load complaints");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleStatusChange = async (
+  const handleAction = async (
     complaintId: string,
-    newStatus: Complaint["status"],
+    action: "reply" | "resolve" | "escalate",
+    message?: string
   ) => {
-    setComplaints((prev) =>
-      prev.map((c) => (c.id === complaintId ? { ...c, status: newStatus } : c)),
-    );
-    toast.success(
-      `Complaint marked as ${newStatus.toLowerCase().replace("_", " ")}`,
-    );
+    setActionLoading(`${complaintId}-${action}`);
+    try {
+      const res = await fetch(`/api/complaints/${complaintId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, message }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+
+      if (action === "reply") {
+        setReplyTexts((prev) => ({ ...prev, [complaintId]: "" }));
+        toast.success("Reply sent");
+      } else if (action === "resolve") {
+        toast.success("Complaint resolved");
+      } else if (action === "escalate") {
+        toast.success("Complaint escalated to admin");
+      }
+
+      await loadComplaints();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Action failed");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const filtered = complaints.filter(
+    (c) =>
+      c.title.toLowerCase().includes(search.toLowerCase()) ||
+      c.complainantName.toLowerCase().includes(search.toLowerCase()) ||
+      (c.event?.title || "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const stats = {
+    total: complaints.length,
+    pending: complaints.filter((c) => c.status === "PENDING").length,
+    inProgress: complaints.filter((c) => c.status === "IN_PROGRESS").length,
+    escalated: complaints.filter((c) => c.status === "ESCALATED").length,
+    resolved: complaints.filter((c) => c.status === "RESOLVED").length,
   };
 
   const timeAgo = (date: string) => {
@@ -288,17 +163,9 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
     return `${Math.floor(hrs / 24)}d ago`;
   };
 
-  const stats = {
-    total: complaints.length,
-    pending: complaints.filter((c) => c.status === "PENDING").length,
-    inProgress: complaints.filter((c) => c.status === "IN_PROGRESS").length,
-    escalated: complaints.filter((c) => c.status === "ESCALATED").length,
-    resolved: complaints.filter((c) => c.status === "RESOLVED").length,
-  };
-
   return (
     <div>
-      {/* Stats row */}
+      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
           { label: "Total", value: stats.total, color: "text-white" },
@@ -306,15 +173,36 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
           { label: "Escalated", value: stats.escalated, color: "text-red-400" },
           { label: "Resolved", value: stats.resolved, color: "text-green-400" },
         ].map((s) => (
-          <div
-            key={s.label}
-            className="bg-gray-900 border border-gray-800 rounded-2xl p-4"
-          >
+          <div key={s.label} className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
             <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-            <p className="text-xs text-gray-600 mt-0.5">{s.label} complaints</p>
+            <p className="text-xs text-gray-600 mt-0.5">{s.label}</p>
           </div>
         ))}
       </div>
+
+      {role === "admin" && (
+        <div className="mb-5 p-4 bg-red-500/5 border border-red-500/20 rounded-2xl">
+          <p className="text-sm font-semibold text-red-400 flex items-center gap-2">
+            <ArrowUpCircle className="w-4 h-4" />
+            You are viewing escalated complaints assigned to admin
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            These complaints were escalated by organizers after failing to resolve them.
+          </p>
+        </div>
+      )}
+
+      {role === "organizer" && (
+        <div className="mb-5 p-4 bg-blue-500/5 border border-blue-500/20 rounded-2xl">
+          <p className="text-sm font-semibold text-blue-400 flex items-center gap-2">
+            <MessageSquare className="w-4 h-4" />
+            Attendee complaints assigned to you
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Resolve complaints or escalate to admin if you cannot resolve them.
+          </p>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
@@ -330,61 +218,60 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
         </div>
         <div className="flex items-center gap-1.5">
           <Filter className="w-3.5 h-3.5 text-gray-500" />
-          {["ALL", "PENDING", "IN_PROGRESS", "ESCALATED", "RESOLVED"].map(
-            (s) => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  statusFilter === s
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-800 text-gray-500 hover:text-white hover:bg-gray-700"
-                }`}
-              >
-                {s === "ALL"
-                  ? "All"
-                  : s === "IN_PROGRESS"
-                    ? "In Progress"
-                    : s.charAt(0) + s.slice(1).toLowerCase()}
-              </button>
-            ),
-          )}
+          {["ALL", "PENDING", "IN_PROGRESS", "ESCALATED", "RESOLVED"].map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                statusFilter === s
+                  ? "bg-purple-600 text-white"
+                  : "bg-gray-800 text-gray-500 hover:text-white hover:bg-gray-700"
+              }`}
+            >
+              {s === "ALL" ? "All" : s === "IN_PROGRESS" ? "In Progress" : s.charAt(0) + s.slice(1).toLowerCase()}
+            </button>
+          ))}
         </div>
+        <button
+          onClick={loadComplaints}
+          className="text-xs text-gray-500 hover:text-white ml-auto"
+        >
+          ↻ Refresh
+        </button>
       </div>
-
-      {apiError && (
-        <div className="mb-5 rounded-2xl border border-red-800 bg-red-950/70 px-4 py-3 text-sm text-red-300">
-          {apiError}
-        </div>
-      )}
 
       {/* Complaints list */}
       <div className="space-y-3">
         {loading ? (
-          [1, 2, 3].map((i) => <ComplaintSkeleton key={i} />)
+          [1, 2, 3].map((i) => <SkeletonComplaint key={i} />)
         ) : filtered.length === 0 ? (
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-16 text-center">
             <MessageSquare className="w-10 h-10 text-gray-700 mx-auto mb-3" />
             <p className="text-gray-400 font-medium">No complaints found</p>
             <p className="text-gray-600 text-xs mt-1">
               {statusFilter !== "ALL"
-                ? `No ${statusFilter.toLowerCase()} complaints`
-                : "All clear!"}
+                ? `No ${statusFilter.toLowerCase().replace("_", " ")} complaints`
+                : role === "organizer"
+                ? "No attendee complaints for your events yet"
+                : "No escalated complaints at this time"}
             </p>
           </div>
         ) : (
           filtered.map((complaint, i) => {
-            const sc = statusConfig[complaint.status];
-            const pc = priorityConfig[complaint.priority];
-            const StatusIcon = sc.icon;
+            const sc =
+              statusConfig[complaint.status as keyof typeof statusConfig];
+            const pc =
+              priorityConfig[complaint.priority as keyof typeof priorityConfig];
+            const StatusIcon = sc?.icon || Clock;
             const isExpanded = expandedId === complaint.id;
+            const replyText = replyTexts[complaint.id] || "";
 
             return (
               <motion.div
                 key={complaint.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
+                transition={{ delay: i * 0.04 }}
                 className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-gray-700 transition-colors"
               >
                 {/* Header */}
@@ -396,23 +283,27 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
                 >
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${sc.className}`}
-                        >
-                          <StatusIcon className="w-3 h-3" />
-                          {sc.label}
-                        </span>
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${pc.className}`}
-                        >
-                          {pc.label}
-                        </span>
+                      <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                        {sc && (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${sc.className}`}
+                          >
+                            <StatusIcon className="w-3 h-3" />
+                            {sc.label}
+                          </span>
+                        )}
+                        {pc && (
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${pc.className}`}
+                          >
+                            {pc.label}
+                          </span>
+                        )}
                         <span className="text-xs text-gray-600 bg-gray-800 px-2 py-0.5 rounded-full">
-                          {categoryLabels[complaint.category]}
+                          {categoryLabels[complaint.category] || complaint.category}
                         </span>
                       </div>
-                      <p className="text-sm font-semibold text-white truncate">
+                      <p className="text-sm font-semibold text-white">
                         {complaint.title}
                       </p>
                     </div>
@@ -425,17 +316,24 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-4 text-xs text-gray-600">
-                    <span>👤 {complaint.complainantName}</span>
+                  <div className="flex items-center gap-4 text-xs text-gray-600 flex-wrap">
+                    <span className="flex items-center gap-1">
+                      <User className="w-3 h-3" />
+                      {complaint.complainantName}
+                    </span>
                     {complaint.complainantPhone && (
                       <span>📱 {complaint.complainantPhone}</span>
                     )}
-                    {complaint.event && <span>🎪 {complaint.event.title}</span>}
-                    {!complaint.event && complaint.eventName && (
-                      <span>🎪 {complaint.eventName}</span>
+                    {complaint.event && (
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        {complaint.event.title}
+                      </span>
                     )}
-                    {complaint.organizerName && (
-                      <span>👨‍💼 {complaint.organizerName}</span>
+                    {complaint.escalatedAt && (
+                      <span className="text-red-400 font-semibold">
+                        ⚠ Escalated
+                      </span>
                     )}
                     <span className="ml-auto">
                       {timeAgo(complaint.createdAt)}
@@ -464,91 +362,109 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
                           </p>
                         </div>
 
+                        {/* Event info */}
+                        {complaint.event && (
+                          <div className="bg-gray-800/30 rounded-xl p-3 mb-4 flex items-center gap-3">
+                            <Calendar className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs font-semibold text-gray-300">
+                                {complaint.event.title}
+                              </p>
+                              <p className="text-xs text-gray-600">
+                                Event reference
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Replies thread */}
-                        {complaint.replies && complaint.replies.length > 0 && (
-                          <div className="space-y-2 mb-4">
+                        {complaint.replies.length > 0 && (
+                          <div className="space-y-3 mb-4">
                             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                               Conversation ({complaint.replies.length})
                             </p>
-                            {complaint.replies.map((reply) => (
-                              <div
-                                key={reply.id}
-                                className={`flex gap-3 ${reply.senderRole === "ATTENDEE" ? "" : "flex-row-reverse"}`}
-                              >
+                            {complaint.replies.map((reply) => {
+                              const isOwnReply =
+                                reply.senderRole === role.toUpperCase();
+                              return (
                                 <div
-                                  className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                                    reply.senderRole === "ADMIN"
-                                      ? "bg-red-500/20 text-red-400"
-                                      : reply.senderRole === "ORGANIZER"
-                                        ? "bg-purple-500/20 text-purple-400"
-                                        : "bg-gray-700 text-gray-400"
-                                  }`}
-                                >
-                                  {reply.senderName.charAt(0).toUpperCase()}
-                                </div>
-                                <div
-                                  className={`flex-1 max-w-xs ${reply.senderRole !== "ATTENDEE" ? "text-right" : ""}`}
+                                  key={reply.id}
+                                  className={`flex gap-3 ${isOwnReply ? "flex-row-reverse" : ""}`}
                                 >
                                   <div
-                                    className={`inline-block px-3 py-2 rounded-2xl text-xs leading-relaxed ${
-                                      reply.senderRole === "ATTENDEE"
-                                        ? "bg-gray-800 text-gray-200"
-                                        : "bg-purple-600/20 text-purple-200 border border-purple-500/20"
+                                    className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                                      reply.senderRole === "ADMIN"
+                                        ? "bg-red-500/20 text-red-400"
+                                        : reply.senderRole === "ORGANIZER"
+                                        ? "bg-purple-500/20 text-purple-400"
+                                        : "bg-gray-700 text-gray-400"
                                     }`}
                                   >
-                                    {reply.message}
+                                    {reply.senderName.charAt(0).toUpperCase()}
                                   </div>
-                                  <p className="text-xs text-gray-700 mt-1">
-                                    {reply.senderName} ·{" "}
-                                    {timeAgo(reply.createdAt)}
-                                  </p>
+                                  <div
+                                    className={`flex-1 max-w-xs ${isOwnReply ? "text-right" : ""}`}
+                                  >
+                                    <div
+                                      className={`inline-block px-3 py-2 rounded-2xl text-xs leading-relaxed ${
+                                        reply.senderRole === "ATTENDEE"
+                                          ? "bg-gray-800 text-gray-200"
+                                          : isOwnReply
+                                          ? "bg-purple-600/20 text-purple-200 border border-purple-500/20"
+                                          : "bg-blue-600/20 text-blue-200 border border-blue-500/20"
+                                      }`}
+                                    >
+                                      {reply.message}
+                                    </div>
+                                    <p className="text-xs text-gray-700 mt-1">
+                                      {reply.senderName} ·{" "}
+                                      {timeAgo(reply.createdAt)}
+                                    </p>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
 
                         {/* Actions */}
-                        <div className="flex items-center gap-2 mb-3 flex-wrap">
-                          {complaint.status !== "RESOLVED" && (
+                        {complaint.status !== "RESOLVED" && (
+                          <div className="flex items-center gap-2 mb-3 flex-wrap">
                             <button
                               onClick={() =>
-                                handleStatusChange(complaint.id, "RESOLVED")
+                                handleAction(complaint.id, "resolve")
                               }
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded-xl text-xs font-semibold transition-all"
+                              disabled={
+                                actionLoading === `${complaint.id}-resolve`
+                              }
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded-xl text-xs font-semibold transition-all disabled:opacity-50"
                             >
-                              <CheckCircle className="w-3.5 h-3.5" /> Mark
-                              resolved
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              Mark resolved
                             </button>
-                          )}
-                          {complaint.status !== "ESCALATED" &&
-                            complaint.status !== "RESOLVED" && (
-                              <button
-                                onClick={() =>
-                                  handleStatusChange(complaint.id, "ESCALATED")
-                                }
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-semibold transition-all"
-                              >
-                                <ArrowUpCircle className="w-3.5 h-3.5" />{" "}
-                                Escalate to admin
-                              </button>
-                            )}
-                          {complaint.status !== "IN_PROGRESS" &&
-                            complaint.status !== "RESOLVED" && (
-                              <button
-                                onClick={() =>
-                                  handleStatusChange(
-                                    complaint.id,
-                                    "IN_PROGRESS",
-                                  )
-                                }
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-xl text-xs font-semibold transition-all"
-                              >
-                                <AlertTriangle className="w-3.5 h-3.5" /> Mark
-                                in progress
-                              </button>
-                            )}
-                        </div>
+
+                            {role === "organizer" &&
+                              complaint.status !== "ESCALATED" && (
+                                <button
+                                  onClick={() =>
+                                    handleAction(
+                                      complaint.id,
+                                      "escalate",
+                                      "Unable to resolve this issue at organizer level. Escalating to admin."
+                                    )
+                                  }
+                                  disabled={
+                                    actionLoading ===
+                                    `${complaint.id}-escalate`
+                                  }
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-semibold transition-all disabled:opacity-50"
+                                >
+                                  <ArrowUpCircle className="w-3.5 h-3.5" />
+                                  Escalate to admin
+                                </button>
+                              )}
+                          </div>
+                        )}
 
                         {/* Reply input */}
                         {complaint.status !== "RESOLVED" && (
@@ -556,24 +472,52 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
                             <div className="flex-1">
                               <textarea
                                 value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
-                                placeholder="Type your reply..."
+                                onChange={(e) =>
+                                  setReplyTexts((prev) => ({
+                                    ...prev,
+                                    [complaint.id]: e.target.value,
+                                  }))
+                                }
+                                placeholder="Type your reply to the attendee..."
                                 rows={2}
                                 className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-xs text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 resize-none"
                               />
                             </div>
                             <button
-                              onClick={() => handleReply(complaint.id)}
-                              disabled={!replyText.trim() || replyLoading}
+                              onClick={() =>
+                                handleAction(
+                                  complaint.id,
+                                  "reply",
+                                  replyText
+                                )
+                              }
+                              disabled={
+                                !replyText.trim() ||
+                                actionLoading === `${complaint.id}-reply`
+                              }
                               className="flex items-center gap-1.5 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-xl transition-all disabled:opacity-40 flex-shrink-0"
                             >
-                              {replyLoading ? (
+                              {actionLoading === `${complaint.id}-reply` ? (
                                 <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                               ) : (
                                 <Send className="w-3.5 h-3.5" />
                               )}
                               Send
                             </button>
+                          </div>
+                        )}
+
+                        {complaint.status === "RESOLVED" && (
+                          <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-3 text-center">
+                            <CheckCircle className="w-5 h-5 text-green-400 mx-auto mb-1" />
+                            <p className="text-xs text-green-400 font-semibold">
+                              This complaint has been resolved
+                            </p>
+                            {complaint.resolvedAt && (
+                              <p className="text-xs text-gray-600 mt-0.5">
+                                {timeAgo(complaint.resolvedAt)}
+                              </p>
+                            )}
                           </div>
                         )}
                       </div>
