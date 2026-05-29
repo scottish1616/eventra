@@ -34,6 +34,8 @@ export function ComplaintForm({
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
+  const [eventNameInput, setEventNameInput] = useState(eventName || "");
+  const [organizerNameInput, setOrganizerNameInput] = useState(organizerName || "");
   const [category, setCategory] = useState("EVENT_ISSUE");
   const [priority, setPriority] = useState("MEDIUM");
   const [submitting, setSubmitting] = useState(false);
@@ -63,6 +65,8 @@ export function ComplaintForm({
           complainantEmail: email.trim() || null,
           eventId: eventId || null,
           organizerId: organizerId || null,
+          eventName: eventNameInput.trim() || null,
+          organizerName: organizerNameInput.trim() || null,
           type: "ATTENDEE",
           category,
           priority,
@@ -166,6 +170,27 @@ export function ComplaintForm({
                 </option>
               ))}
             </select>
+          </label>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label className="block text-xs text-gray-300">
+            Event name
+            <input
+              value={eventNameInput}
+              onChange={(e) => setEventNameInput(e.target.value)}
+              className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none"
+              placeholder="Name of the event"
+            />
+          </label>
+          <label className="block text-xs text-gray-300">
+            Organizer name
+            <input
+              value={organizerNameInput}
+              onChange={(e) => setOrganizerNameInput(e.target.value)}
+              className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none"
+              placeholder="Name of the organizer"
+            />
           </label>
         </div>
 

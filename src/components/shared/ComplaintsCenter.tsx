@@ -18,7 +18,7 @@ import toast from "react-hot-toast";
 import type { Complaint, ComplaintReply } from "./types";
 
 interface Props {
-  role: "admin" | "organizer";
+  role: "admin" | "organizer" | "attendee";
   organizerId?: string;
 }
 
@@ -431,6 +431,12 @@ export function ComplaintsCenter({ role, organizerId }: Props) {
                       <span>📱 {complaint.complainantPhone}</span>
                     )}
                     {complaint.event && <span>🎪 {complaint.event.title}</span>}
+                    {!complaint.event && complaint.eventName && (
+                      <span>🎪 {complaint.eventName}</span>
+                    )}
+                    {complaint.organizerName && (
+                      <span>👨‍💼 {complaint.organizerName}</span>
+                    )}
                     <span className="ml-auto">
                       {timeAgo(complaint.createdAt)}
                     </span>

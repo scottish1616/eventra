@@ -48,6 +48,8 @@ export interface Complaint {
   createdAt: string;
   updatedAt: string;
   event?: { title: string; slug: string } | null;
+  eventName?: string | null;
+  organizerName?: string | null;
   replies?: ComplaintReply[];
 }
 
