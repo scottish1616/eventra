@@ -629,7 +629,7 @@ export default function AdminDashboard() {
                                     ...prev,
                                     feePercent:
                                       event.target.value === ""
-                                        ? ""
+                                        ? 0
                                         : Number(event.target.value),
                                   }))
                                 }
@@ -651,7 +651,7 @@ export default function AdminDashboard() {
                                   ...prev,
                                   feeFixed:
                                     event.target.value === ""
-                                      ? ""
+                                      ? 0
                                       : Number(event.target.value),
                                 }))
                               }
@@ -674,7 +674,7 @@ export default function AdminDashboard() {
                                 ...prev,
                                 minTicketPrice:
                                   event.target.value === ""
-                                    ? ""
+                                    ? 0
                                     : Number(event.target.value),
                               }))
                             }

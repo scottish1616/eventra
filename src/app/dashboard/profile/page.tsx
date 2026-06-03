@@ -88,9 +88,10 @@ export default function ProfilePage() {
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      if (typeof reader.result === "string") {
-        setImagePreview(reader.result);
-        setFormData((prev) => ({ ...prev, image: reader.result }));
+      const result = reader.result;
+      if (typeof result === "string") {
+        setImagePreview(result);
+        setFormData((prev) => ({ ...prev, image: result }));
       }
     };
     reader.readAsDataURL(file);
