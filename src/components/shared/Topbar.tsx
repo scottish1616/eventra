@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Menu, Search, Bell, ChevronDown,
@@ -21,6 +22,7 @@ interface Props {
   title: string;
   subtitle?: string;
   userName: string;
+  userImage?: string | null;
   userRole: string;
   onMobileMenuOpen: () => void;
 }
@@ -46,7 +48,8 @@ const typeColor = {
   organizer: "text-purple-400 bg-purple-500/10",
 };
 
-export function Topbar({ title, subtitle, userName, userRole, onMobileMenuOpen }: Props) {
+export function Topbar({ title, subtitle, userName, userImage, userRole, onMobileMenuOpen }: Props) {
+  const router = useRouter();
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -229,8 +232,16 @@ export function Topbar({ title, subtitle, userName, userRole, onMobileMenuOpen }
             onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
             className="flex items-center gap-2 p-1.5 hover:bg-white/5 rounded-xl transition-colors"
           >
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
-              {userName.charAt(0).toUpperCase()}
+            <div className="w-7 h-7 rounded-lg overflow-hidden flex-shrink-0">
+              {/** Show profile image if available, otherwise show initial with gradient */}
+              {userImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={userImage} alt={userName || "profile"} className="w-7 h-7 object-cover" />
+              ) : (
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                  {userName.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
             <span className="hidden sm:block text-xs text-gray-400 font-medium max-w-[70px] truncate">
               {userName.split(" ")[0]}
@@ -257,7 +268,13 @@ export function Topbar({ title, subtitle, userName, userRole, onMobileMenuOpen }
                   </div>
                 </div>
                 <div className="p-2">
-                  <button className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors">
+                  <button
+                    onClick={() => {
+                      setProfileOpen(false);
+                      router.push("/dashboard/profile");
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
+                  >
                     <User className="w-3.5 h-3.5" /> Profile settings
                   </button>
                   <motion.button

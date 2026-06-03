@@ -54,8 +54,15 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, phone, organizationName, organizationLogo, mpesaPaybill } =
-      body;
+    const {
+      name,
+      phone,
+      organizationName,
+      organizationLogo,
+      image,
+      bio,
+      mpesaPaybill,
+    } = body;
 
     const supabase = getSupabase();
 
@@ -68,6 +75,8 @@ export async function PATCH(req: NextRequest) {
         : null;
     if (organizationLogo !== undefined)
       updates.organizationLogo = organizationLogo || null;
+    if (image !== undefined) updates.image = image || null;
+    if (bio !== undefined) updates.bio = bio || null;
     if (mpesaPaybill !== undefined)
       updates.mpesaPaybill = mpesaPaybill ? mpesaPaybill.trim() : null;
 

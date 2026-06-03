@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, Search, Bell, ChevronDown, Shield, LogOut, User } from "lucide-react";
 import { signOut } from "next-auth/react";
@@ -9,10 +10,12 @@ interface Props {
   title: string;
   subtitle: string;
   userName: string;
+  userImage?: string | null;
   onMobileMenuOpen: () => void;
 }
 
-export function AdminTopbar({ title, subtitle, userName, onMobileMenuOpen }: Props) {
+export function AdminTopbar({ title, subtitle, userName, userImage, onMobileMenuOpen }: Props) {
+  const router = useRouter();
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
 
@@ -61,8 +64,15 @@ export function AdminTopbar({ title, subtitle, userName, onMobileMenuOpen }: Pro
             onClick={() => setProfileOpen(!profileOpen)}
             className="flex items-center gap-2 p-2 hover:bg-white/5 rounded-xl transition-all"
           >
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
-              {userName.charAt(0).toUpperCase()}
+            <div className="w-7 h-7 rounded-lg overflow-hidden flex-shrink-0">
+              {userImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={userImage} alt={userName || "profile"} className="w-7 h-7 object-cover" />
+              ) : (
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                  {userName.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
             <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${profileOpen ? "rotate-180" : ""}`} />
           </button>
@@ -84,7 +94,13 @@ export function AdminTopbar({ title, subtitle, userName, onMobileMenuOpen }: Pro
                   </div>
                 </div>
                 <div className="p-2">
-                  <button className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">
+                  <button
+                    onClick={() => {
+                      setProfileOpen(false);
+                      router.push("/dashboard/profile");
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+                  >
                     <User className="w-3.5 h-3.5" /> Profile
                   </button>
                   <button

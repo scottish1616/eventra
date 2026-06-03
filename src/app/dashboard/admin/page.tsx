@@ -81,6 +81,7 @@ export default function AdminDashboard() {
   const [commissionSaving, setCommissionSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
+  const [profileData, setProfileData] = useState<any>(null);
 
   const user = session?.user as SessionUser | undefined;
 
@@ -103,13 +104,14 @@ export default function AdminDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [eventsRes, orgsRes, analyticsRes, complaintsRes, settingsRes] =
+      const [eventsRes, orgsRes, analyticsRes, complaintsRes, settingsRes, profileRes] =
         await Promise.all([
           fetch("/api/events").then((r) => r.json()),
           fetch("/api/admin/organizers").then((r) => r.json()),
           fetch("/api/admin/analytics").then((r) => r.json()),
           fetch("/api/complaints").then((r) => r.json()),
           fetch("/api/admin/settings").then((r) => r.json()),
+          fetch("/api/profile").then((r) => r.json()),
         ]);
 
       const eventsData: Event[] = eventsRes.data || [];
@@ -130,6 +132,10 @@ export default function AdminDashboard() {
           minTicketPrice: settings.defaultRule.minTicketPrice,
           isDefault: settings.defaultRule.isDefault,
         });
+      }
+
+      if (profileRes.data) {
+        setProfileData(profileRes.data);
       }
 
       setEvents(eventsData);
@@ -239,7 +245,7 @@ export default function AdminDashboard() {
   );
 
   const pendingOrgsCount = organizers.filter(
-    (o) => o.subscriptionStatus === "pending" || !o.subscriptionStatus,
+    (o) => o.approvalStatus === "PENDING",
   ).length;
 
   if (status === "loading" || (status === "authenticated" && !authChecked)) {
@@ -276,6 +282,7 @@ export default function AdminDashboard() {
         setActiveTab={(tab) => setActiveTab(tab as Tab)}
         userName={user?.name || "Admin"}
         userEmail={user?.email || ""}
+        userImage={profileData?.image || (user as any)?.image || null}
         mobileOpen={mobileMenuOpen}
         onMobileClose={() => setMobileMenuOpen(false)}
         badges={{
@@ -289,6 +296,7 @@ export default function AdminDashboard() {
           title={tabInfo.title}
           subtitle={tabInfo.subtitle}
           userName={user?.name || "Admin"}
+          userImage={profileData?.image || (user as any)?.image || null}
           userRole="admin"
           onMobileMenuOpen={() => setMobileMenuOpen(true)}
         />
@@ -307,6 +315,35 @@ export default function AdminDashboard() {
                   <div className="space-y-6">
                     <StatsCards stats={stats} loading={loading} />
                     <AnalyticsCharts analyticsData={analyticsData} />
+
+                    {/* Profile card with bio */}
+                    {profileData && (
+                      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <h3 className="text-sm font-bold text-white mb-1">
+                              {profileData.name || user?.name}
+                            </h3>
+                            {profileData.bio && (
+                              <p className="text-xs text-gray-400 leading-relaxed">
+                                {profileData.bio}
+                              </p>
+                            )}
+                            {!profileData.bio && (
+                              <p className="text-xs text-gray-600 italic">
+                                No bio added yet
+                              </p>
+                            )}
+                          </div>
+                          <a
+                            href="/dashboard/profile"
+                            className="text-xs text-purple-400 hover:text-purple-300 font-semibold px-3 py-1.5 bg-purple-500/10 rounded-lg border border-purple-500/20 hover:border-purple-500/40 transition-all"
+                          >
+                            Edit
+                          </a>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Pending Organizers */}
                     {pendingOrgsCount > 0 && (
@@ -586,13 +623,16 @@ export default function AdminDashboard() {
                               type="number"
                               min={0}
                               step={0.1}
-                              value={commissionForm.feePercent}
-                              onChange={(event) =>
-                                setCommissionForm((prev) => ({
-                                  ...prev,
-                                  feePercent: Number(event.target.value),
-                                }))
-                              }
+                              value={commissionForm.feePercent ?? ""}
+                                onChange={(event) =>
+                                  setCommissionForm((prev) => ({
+                                    ...prev,
+                                    feePercent:
+                                      event.target.value === ""
+                                        ? ""
+                                        : Number(event.target.value),
+                                  }))
+                                }
                               className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-950 px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
                             />
                           </div>
@@ -605,11 +645,14 @@ export default function AdminDashboard() {
                               type="number"
                               min={0}
                               step={1}
-                              value={commissionForm.feeFixed}
+                              value={commissionForm.feeFixed ?? ""}
                               onChange={(event) =>
                                 setCommissionForm((prev) => ({
                                   ...prev,
-                                  feeFixed: Number(event.target.value),
+                                  feeFixed:
+                                    event.target.value === ""
+                                      ? ""
+                                      : Number(event.target.value),
                                 }))
                               }
                               className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-950 px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
@@ -625,11 +668,14 @@ export default function AdminDashboard() {
                             type="number"
                             min={0}
                             step={1}
-                            value={commissionForm.minTicketPrice}
+                            value={commissionForm.minTicketPrice ?? ""}
                             onChange={(event) =>
                               setCommissionForm((prev) => ({
                                 ...prev,
-                                minTicketPrice: Number(event.target.value),
+                                minTicketPrice:
+                                  event.target.value === ""
+                                    ? ""
+                                    : Number(event.target.value),
                               }))
                             }
                             className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-950 px-4 py-3 text-sm text-white outline-none focus:border-purple-500"

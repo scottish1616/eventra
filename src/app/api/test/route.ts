@@ -19,7 +19,7 @@ export async function GET() {
       .from("users")
       .insert({
         name: "Test Organizer",
-        email: "testorg@eventra.app",
+        email: "testorg@gmail.com",
         password: hashedPassword,
         phone: "0712000000",
         role: "ORGANIZER",

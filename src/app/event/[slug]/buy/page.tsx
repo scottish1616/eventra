@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle, Smartphone, Ticket } from "lucide-react";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
 
 interface TicketType {
   id: string;
@@ -169,10 +171,10 @@ export default function EventBuyPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="text-center py-20">
-          <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm text-gray-500">Loading event details...</p>
+      <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-gray-900 to-gray-800">
+        <div className="text-center py-20 glass-card p-8">
+          <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-white/80">Loading event details...</p>
         </div>
       </div>
     );
@@ -199,43 +201,47 @@ export default function EventBuyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-8">
+    <div className="min-h-screen px-4 py-8 bg-gradient-to-b from-gray-950 to-gray-900 text-white">
       <div className="mx-auto max-w-6xl">
         <div className="flex items-center gap-3 mb-6">
           <button
             type="button"
             onClick={() => router.back()}
-            className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            className="inline-flex items-center gap-2 rounded-2xl border border-white/6 bg-white/3 px-4 py-2 text-sm font-medium text-white/90 hover:bg-white/5"
           >
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
-          <span className="text-sm text-gray-500">Event purchase</span>
+          <span className="text-sm text-white/70">Event purchase</span>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
           <section className="space-y-6">
-            <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+            <div className="">
+              {/* Use Card variant for consistent morphism */}
+              <Card variant="glass" className="p-6">
               <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-3 text-sm text-gray-500">
+                <div className="flex items-center gap-3 text-sm text-white/70">
                   <span>{formatDate(event?.date)}</span>
                   <span>•</span>
                   <span>{event?.venue || event?.location || "Online"}</span>
                 </div>
-                <h1 className="text-3xl font-semibold text-gray-900">{event?.title}</h1>
-                <p className="text-sm text-gray-500 leading-7">{event?.description || "Buy tickets for this event."}</p>
+                <h1 className="text-3xl font-semibold text-white">{event?.title}</h1>
+                <p className="text-sm text-white/70 leading-7">{event?.description || "Buy tickets for this event."}</p>
                 {event?.organizer?.name && (
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-white/60">
                     Hosted by {event.organizer.organizationName || event.organizer.name}
                   </p>
                 )}
               </div>
+              </Card>
             </div>
 
-            <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Select tickets</h2>
+            <div>
+              <Card variant="clay" className="p-6">
+                <h2 className="text-xl font-semibold text-white mb-4">Select tickets</h2>
               <div className="space-y-4">
                 {ticketTypes.length === 0 ? (
-                  <p className="text-sm text-gray-500">No tickets are available for this event.</p>
+                  <p className="text-sm text-white/70">No tickets are available for this event.</p>
                 ) : (
                   ticketTypes.map((ticketType) => {
                     const available = Math.max(0, ticketType.totalSlots - ticketType.soldCount);
@@ -243,19 +249,19 @@ export default function EventBuyPage() {
                     const maxQty = Math.min(available, ticketType.maxPerOrder || available);
 
                     return (
-                      <div key={ticketType.id} className="rounded-3xl border border-gray-100 p-4">
+                      <div key={ticketType.id} className="glass-card p-4">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
-                            <p className="text-sm font-semibold text-gray-900">{ticketType.name}</p>
-                            <p className="text-xs text-gray-500">{ticketType.category} • {formatCurrency(ticketType.price)}</p>
-                            {ticketType.description && <p className="text-xs text-gray-400 mt-2">{ticketType.description}</p>}
+                            <p className="text-sm font-semibold text-white">{ticketType.name}</p>
+                            <p className="text-xs text-white/70">{ticketType.category} • {formatCurrency(ticketType.price)}</p>
+                            {ticketType.description && <p className="text-xs text-white/60 mt-2">{ticketType.description}</p>}
                           </div>
                           <div className="flex items-center gap-2 mt-3 sm:mt-0">
                             <button
                               type="button"
                               onClick={() => setQty(ticketType.id, qty - 1)}
                               disabled={qty === 0}
-                              className="h-10 w-10 rounded-full border border-gray-200 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                              className="h-10 w-10 rounded-full border border-white/6 text-white/80 disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                               −
                             </button>
@@ -264,13 +270,13 @@ export default function EventBuyPage() {
                               type="button"
                               onClick={() => setQty(ticketType.id, qty + 1)}
                               disabled={qty >= maxQty}
-                              className="h-10 w-10 rounded-full border border-gray-200 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                              className="h-10 w-10 rounded-full border border-white/6 text-white/80 disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                               +
                             </button>
                           </div>
                         </div>
-                        <p className="mt-3 text-xs text-gray-400">
+                        <p className="mt-3 text-xs text-white/60">
                           {available === 0 ? "Sold out" : `${available} available, max ${ticketType.maxPerOrder || available} per order`}
                         </p>
                       </div>
@@ -278,6 +284,7 @@ export default function EventBuyPage() {
                   })
                 )}
               </div>
+            </Card>
             </div>
 
             <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
@@ -315,14 +322,14 @@ export default function EventBuyPage() {
           </section>
 
           <aside className="space-y-6">
-            <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+            <div className="glass-card p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="rounded-2xl bg-violet-50 p-3 text-violet-600">
                   <Smartphone className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">Payment method</p>
-                  <p className="text-xs text-gray-500">M-Pesa is supported now. Use test payment for demo checkout.</p>
+                  <p className="text-sm font-semibold text-white">Payment method</p>
+                  <p className="text-xs text-white/70">M-Pesa is supported now. Use test payment for demo checkout.</p>
                 </div>
               </div>
               <div className="space-y-3">
@@ -333,8 +340,8 @@ export default function EventBuyPage() {
                     onClick={() => setPaymentMethod(method)}
                     className={`w-full rounded-3xl border px-4 py-4 text-left transition ${
                       paymentMethod === method
-                        ? "border-violet-500 bg-violet-50"
-                        : "border-gray-200 bg-white hover:border-gray-300"
+                        ? "border-violet-500 bg-white/6"
+                        : "border-white/6 bg-white/3 hover:border-white/20"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-4">
@@ -350,7 +357,7 @@ export default function EventBuyPage() {
                         className={`h-5 w-5 rounded-full border ${
                           paymentMethod === method
                             ? "border-violet-500 bg-violet-600"
-                            : "border-gray-300"
+                            : "border-white/6"
                         }`}
                       />
                     </div>
@@ -359,33 +366,32 @@ export default function EventBuyPage() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+            <div className="glass-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-sm text-gray-500">Total</p>
-                  <p className="text-3xl font-semibold text-gray-900">{formatCurrency(totalPrice)}</p>
+                  <p className="text-sm text-white/70">Total</p>
+                  <p className="text-3xl font-semibold text-white">{formatCurrency(totalPrice)}</p>
                 </div>
-                <div className="rounded-3xl bg-violet-50 p-3 text-violet-600">
+                <div className="rounded-3xl bg-white/6 p-3 text-white">
                   <Ticket className="w-5 h-5" />
                 </div>
               </div>
 
               {error && (
-                <div className="rounded-2xl bg-red-50 border border-red-100 p-4 text-sm text-red-700 mb-4">
+                <div className="rounded-2xl bg-red-600/10 border border-red-500/10 p-4 text-sm text-red-300 mb-4">
                   {error}
                 </div>
               )}
 
-              <button
-                type="button"
+              <Button
                 onClick={handlePurchase}
                 disabled={submitting || totalItems === 0}
-                className="w-full rounded-3xl bg-violet-600 px-5 py-4 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white px-5 py-4 disabled:opacity-50"
               >
                 {submitting ? "Processing…" : totalItems === 0 ? "Select tickets to continue" : `Pay ${formatCurrency(totalPrice)}`}
-              </button>
+              </Button>
 
-              <p className="text-xs text-gray-400 mt-4">
+              <p className="text-xs text-white/60 mt-4">
                 Your tickets will be delivered to your email after successful payment.
               </p>
             </div>

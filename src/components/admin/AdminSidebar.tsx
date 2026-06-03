@@ -14,6 +14,7 @@ interface Props {
   setActiveTab: (tab: string) => void;
   userName: string;
   userEmail: string;
+  userImage?: string | null;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
@@ -31,6 +32,7 @@ export function AdminSidebar({
   setActiveTab,
   userName,
   userEmail,
+  userImage,
   mobileOpen,
   onMobileClose,
 }: Props) {
@@ -93,8 +95,15 @@ export function AdminSidebar({
       {/* User */}
       <div className="px-3 py-4 border-t border-gray-800">
         <div className="flex items-center gap-3 px-3 py-2 mb-2 rounded-xl bg-white/5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-            {userName.charAt(0).toUpperCase()}
+          <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
+            {userImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={userImage} alt={userName || "profile"} className="w-8 h-8 object-cover rounded-lg" />
+            ) : (
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                {userName.charAt(0).toUpperCase()}
+              </div>
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-white truncate">{userName}</p>

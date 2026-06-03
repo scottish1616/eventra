@@ -21,6 +21,7 @@ interface Props {
   setActiveTab: (tab: string) => void;
   userName: string;
   userEmail: string;
+  userImage?: string | null;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
   badges?: Record<string, number>;
@@ -49,6 +50,7 @@ export function Sidebar({
   setActiveTab,
   userName,
   userEmail,
+  userImage,
   mobileOpen,
   onMobileClose,
   badges = {},
@@ -139,11 +141,15 @@ export function Sidebar({
       {/* User section */}
       <div className="px-3 py-3 border-t border-gray-800">
         <div className="flex items-center gap-2.5 px-3 py-2 mb-1 rounded-xl bg-white/5 border border-gray-800">
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className={`w-8 h-8 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-xs font-bold flex-shrink-0 cursor-pointer`}
-          >
-            {userName.charAt(0).toUpperCase()}
+          <motion.div whileHover={{ scale: 1.05 }} className={`w-8 h-8 rounded-lg overflow-hidden flex-shrink-0`}>            
+            {userImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={userImage} alt={userName || "profile"} className="w-8 h-8 object-cover rounded-lg" />
+            ) : (
+              <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-xs font-bold flex-shrink-0 cursor-pointer`}>
+                {userName.charAt(0).toUpperCase()}
+              </div>
+            )}
           </motion.div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-white truncate">{userName}</p>

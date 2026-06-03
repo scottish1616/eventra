@@ -378,12 +378,12 @@ export function ComplaintsCenter({ role }: Props) {
                         )}
 
                         {/* Replies thread */}
-                        {complaint.replies.length > 0 && (
+                        {(complaint.replies?.length ?? 0) > 0 && (
                           <div className="space-y-3 mb-4">
                             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                              Conversation ({complaint.replies.length})
+                              Conversation ({complaint.replies?.length ?? 0})
                             </p>
-                            {complaint.replies.map((reply) => {
+                            {(complaint.replies || []).map((reply) => {
                               const isOwnReply =
                                 reply.senderRole === role.toUpperCase();
                               return (

@@ -1,10 +1,64 @@
 @import "tailwindcss";
 
 @layer utilities {
-  .card {
-    background: #111827;
+  :root {
+    --bg-900: #0b1020;
+    --glass-bg: rgba(255,255,255,0.04);
+    --glass-border: rgba(255,255,255,0.06);
+    --primary-500: #7c3aed;
+    --primary-600: #6d28d9;
+    --accent-400: #60a5fa;
+    --muted: #9ca3af;
+    --card-elev: 0 6px 24px rgba(2,6,23,0.6);
+  }
+
+  /* Glass / Neumorphism helpers */
+  .glass {
+    background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(8px) saturate(120%);
+    -webkit-backdrop-filter: blur(8px) saturate(120%);
+    box-shadow: var(--card-elev);
     border-radius: 1rem;
-    border: 1px solid #1f2937;
+  }
+
+  .glass-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius: 1rem;
+    border: 1px solid rgba(255,255,255,0.04);
+    box-shadow: 0 10px 30px rgba(2,6,23,0.5);
+  }
+
+  /* Neumorphism */
+  .card-neu {
+    background: linear-gradient(180deg, #0f1724, #0b1220);
+    border-radius: 1rem;
+    box-shadow: 8px 8px 20px rgba(2,6,23,0.6), -6px -6px 16px rgba(255,255,255,0.02) inset;
+    border: 1px solid rgba(255,255,255,0.02);
+  }
+
+  /* Claymorphism (soft, pillowy) */
+  .card-clay {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius: 1.25rem;
+    box-shadow: 0 14px 40px rgba(2,6,23,0.6), 0 6px 12px rgba(2,6,23,0.45);
+    border: 1px solid rgba(255,255,255,0.03);
+  }
+
+  .floating {
+    transform: translateZ(0);
+    transition: transform 0.35s cubic-bezier(.2,.9,.2,1), box-shadow 0.35s;
+  }
+
+  .floating:hover {
+    transform: translateY(-6px) scale(1.01);
+    box-shadow: 0 18px 40px rgba(2,6,23,0.55);
+  }
+  .card {
+    background: linear-gradient(180deg, rgba(17,24,39,0.9), rgba(17,24,39,0.85));
+    border-radius: 1rem;
+    border: 1px solid rgba(255,255,255,0.03);
+    box-shadow: 0 8px 30px rgba(2,6,23,0.5);
   }
   .card-light {
     background: white;

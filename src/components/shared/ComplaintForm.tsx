@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 interface ComplaintFormProps {
@@ -8,6 +8,21 @@ interface ComplaintFormProps {
   organizerId?: string;
   eventName?: string;
   organizerName?: string;
+}
+
+interface Organizer {
+  id: string;
+  name: string;
+  organizationName?: string;
+  email: string;
+}
+
+interface EventData {
+  id: string;
+  title: string;
+  organizerId: string;
+  date: string;
+  location?: string;
 }
 
 const categories = [
@@ -42,6 +57,70 @@ export function ComplaintForm({
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
+  const [form, setForm] = useState({
+    eventId: eventId || "",
+    organizerId: organizerId || "",
+  });
+
+  const [organizers, setOrganizers] = useState<Organizer[]>([]);
+  const [events, setEvents] = useState<EventData[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  const selectedOrganizer = organizers.find(
+    (o) => o.id === form.organizerId
+  );
+  const selectedEvent = events.find((e) => e.id === form.eventId) || null;
+  const filteredEvents = form.organizerId
+    ? events.filter((e) => e.organizerId === form.organizerId)
+    : [];
+
+  useEffect(() => {
+    const loadFormData = async () => {
+      setLoadingData(true);
+      try {
+        const res = await fetch("/api/complaints/form-data");
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setOrganizers(data.data.organizers || []);
+          setEvents(data.data.events || []);
+        }
+      } catch (err) {
+        console.error("Failed to load complaint form data", err);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    loadFormData();
+  }, []);
+
+  const handleOrganizerChange = (organizerId: string) => {
+    const organizer = organizers.find((o) => o.id === organizerId);
+    setForm((prev) => ({
+      ...prev,
+      organizerId,
+      eventId: "",
+    }));
+    if (organizer) {
+      setOrganizerNameInput(
+        `${organizer.organizationName || organizer.name}`
+      );
+    }
+  };
+
+  const handleEventChange = (eventId: string) => {
+    const event = events.find((e) => e.id === eventId);
+
+    setForm((prev) => ({
+      ...prev,
+      eventId,
+      organizerId: event?.organizerId || prev.organizerId,
+    }));
+    if (event) {
+      setEventNameInput(event.title);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
@@ -54,6 +133,11 @@ export function ComplaintForm({
     setSubmitting(true);
 
     try {
+      const selectedEvent = events.find((e) => e.id === form.eventId);
+      const selectedOrganizer = organizers.find(
+        (o) => o.id === form.organizerId
+      );
+
       const res = await fetch("/api/complaints", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -63,10 +147,15 @@ export function ComplaintForm({
           complainantName: name.trim(),
           complainantPhone: phone.trim() || null,
           complainantEmail: email.trim() || null,
-          eventId: eventId || null,
-          organizerId: organizerId || null,
-          eventName: eventNameInput.trim() || null,
-          organizerName: organizerNameInput.trim() || null,
+          eventId: form.eventId || null,
+          organizerId: form.organizerId || null,
+          eventName:
+            selectedEvent?.title || eventNameInput.trim() || null,
+          organizerName:
+            selectedOrganizer?.organizationName ||
+            selectedOrganizer?.name ||
+            organizerNameInput.trim() ||
+            null,
           type: "ATTENDEE",
           category,
           priority,
@@ -175,24 +264,66 @@ export function ComplaintForm({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="block text-xs text-gray-300">
-            Event name
-            <input
-              value={eventNameInput}
-              onChange={(e) => setEventNameInput(e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none"
-              placeholder="Name of the event"
-            />
+            Organizer
+            <select
+              value={form.organizerId}
+              onChange={(e) => handleOrganizerChange(e.target.value)}
+              disabled={loadingData}
+              className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">
+                {loadingData ? "Loading organizers..." : "Choose an organizer"}
+              </option>
+              {organizers.map((organizer) => (
+                <option key={organizer.id} value={organizer.id}>
+                  {organizer.organizationName || organizer.name}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="block text-xs text-gray-300">
-            Organizer name
-            <input
-              value={organizerNameInput}
-              onChange={(e) => setOrganizerNameInput(e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none"
-              placeholder="Name of the organizer"
-            />
+            Event
+            <select
+              value={form.eventId}
+              onChange={(e) => handleEventChange(e.target.value)}
+              disabled={loadingData || !form.organizerId}
+              className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">
+                {loadingData
+                  ? "Loading events..."
+                  : form.organizerId
+                  ? "Select an event"
+                  : "Select an organizer first"}
+              </option>
+              {filteredEvents.map((eventOption) => (
+                <option key={eventOption.id} value={eventOption.id}>
+                  {eventOption.title}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
+
+        {loadingData && (
+          <p className="text-sm text-gray-400 mt-2">
+            Loading organizers and events...
+          </p>
+        )}
+
+        {selectedOrganizer && selectedEvent && (
+          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 text-sm text-gray-300">
+            <p className="font-semibold text-white">Reporting for</p>
+            <p className="mt-2">Organizer: {selectedOrganizer.organizationName || selectedOrganizer.name}</p>
+            <p>Event: {selectedEvent.title}</p>
+          </div>
+        )}
+
+        {!loadingData && !selectedOrganizer && (
+          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 text-sm text-amber-200">
+            Select an organizer and event so the complaint is routed correctly.
+          </div>
+        )}
 
         <label className="block text-xs text-gray-300">
           Subject

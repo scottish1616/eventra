@@ -1,20 +1,35 @@
 const MPESA_ENV = process.env.MPESA_ENV || "sandbox";
 
 const BASE_URL =
-  MPESA_ENV === "production"
+  process.env.MPESA_BASE_URL ||
+  (MPESA_ENV === "production"
     ? "https://api.safaricom.co.ke"
-    : "https://sandbox.safaricom.co.ke";
+    : "https://sandbox.safaricom.co.ke");
+
+const DEFAULT_SANDBOX_SHORTCODE = "174379";
+const DEFAULT_SANDBOX_PASSKEY =
+  "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b1d8f1f27c7a2bd0f9d6a1";
 
 const CONSUMER_KEY = process.env.MPESA_CONSUMER_KEY!;
 const CONSUMER_SECRET = process.env.MPESA_CONSUMER_SECRET!;
-const SHORTCODE = process.env.MPESA_SHORTCODE!;
-const PASSKEY = process.env.MPESA_PASSKEY!;
-const CALLBACK_URL = process.env.MPESA_CALLBACK_URL!;
+const SHORTCODE =
+  process.env.MPESA_SHORTCODE ||
+  (MPESA_ENV === "sandbox" ? DEFAULT_SANDBOX_SHORTCODE : undefined!);
+const PASSKEY =
+  process.env.MPESA_PASSKEY ||
+  (MPESA_ENV === "sandbox" ? DEFAULT_SANDBOX_PASSKEY : undefined!);
+const CALLBACK_URL = process.env.MPESA_CALLBACK_URL || "";
 
 let cachedToken: string | null = null;
 let tokenExpiry: number = 0;
 
 export async function getMpesaToken(): Promise<string> {
+  if (!CONSUMER_KEY || !CONSUMER_SECRET) {
+    throw new Error(
+      "M-Pesa credentials are missing. Set MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET."
+    );
+  }
+
   if (cachedToken && Date.now() < tokenExpiry) {
     return cachedToken;
   }
@@ -60,8 +75,28 @@ export function getMpesaTimestamp(): string {
 }
 
 export function getMpesaPassword(timestamp: string): string {
+  if (!SHORTCODE || !PASSKEY) {
+    throw new Error(
+      "M-Pesa shortcode or passkey is missing. For sandbox use SHORTCODE=174379 and the sandbox passkey."
+    );
+  }
+
   const raw = `${SHORTCODE}${PASSKEY}${timestamp}`;
   return Buffer.from(raw).toString("base64");
+}
+
+function validateMpesaConfig() {
+  if (!CALLBACK_URL) {
+    throw new Error(
+      "M-Pesa callback URL is missing. Set MPESA_CALLBACK_URL to a valid public callback endpoint."
+    );
+  }
+
+  if (!CALLBACK_URL.startsWith("http://") && !CALLBACK_URL.startsWith("https://")) {
+    throw new Error(
+      "M-Pesa callback URL is invalid. It must start with http:// or https://."
+    );
+  }
 }
 
 export async function initiateStkPush({
@@ -78,6 +113,8 @@ export async function initiateStkPush({
   const token = await getMpesaToken();
   const timestamp = getMpesaTimestamp();
   const password = getMpesaPassword(timestamp);
+
+  validateMpesaConfig();
 
   const formattedPhone = formatPhone(phone);
   const roundedAmount = Math.ceil(amount);
@@ -107,6 +144,11 @@ export async function initiateStkPush({
       body: JSON.stringify(body),
     }
   );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`STK push failed: ${res.status} ${res.statusText} - ${text}`);
+  }
 
   if (!res.ok) {
     const text = await res.text();

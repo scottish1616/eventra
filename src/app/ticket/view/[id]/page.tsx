@@ -186,17 +186,16 @@ export default function TicketViewPage() {
           </div>
 
           <div className="px-6 pt-6 pb-4 flex flex-col items-center">
-            {ticket.qrCode ? (
-              <div className="bg-white p-3 rounded-2xl border-2 border-gray-100 shadow-sm mb-3">
-                <img
-                  src={ticket.qrCode}
-                  alt="QR Code"
-                  width={180}
-                  height={180}
-                  className="rounded-lg"
-                />
-              </div>
-            ) : (
+            <div className="bg-white p-3 rounded-2xl border-2 border-gray-100 shadow-sm mb-3">
+              <img
+                src={`/api/tickets/${ticket.id}/qrcode`}
+                alt="QR Code"
+                width={180}
+                height={180}
+                className="rounded-lg"
+              />
+            </div>
+            {false && (
               <div className="w-48 h-48 bg-gray-100 rounded-2xl flex flex-col items-center justify-center mb-3 border-2 border-dashed border-gray-200">
                 <Ticket className="w-10 h-10 text-gray-300 mb-2" />
                 <p className="text-xs text-gray-400 text-center px-4">QR Code</p>

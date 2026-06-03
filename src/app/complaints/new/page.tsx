@@ -55,13 +55,30 @@ export default function NewComplaintPage() {
       .catch(() => setLoading(false));
   }, []);
 
+  const selectedOrganizer = organizers.find(
+    (o) => o.id === form.organizerId
+  ) || null;
+
+  const organizerEvents = form.organizerId
+    ? events.filter((e) => e.organizerId === form.organizerId)
+    : [];
+
+  const handleOrganizerChange = (organizerId: string) => {
+    setSelectedEvent(null);
+    setForm((prev) => ({
+      ...prev,
+      organizerId,
+      eventId: "",
+    }));
+  };
+
   const handleEventChange = (eventId: string) => {
     const event = events.find((e) => e.id === eventId);
     setSelectedEvent(event || null);
     setForm((prev) => ({
       ...prev,
       eventId,
-      organizerId: event?.organizerId || "",
+      organizerId: event?.organizerId || prev.organizerId,
     }));
   };
 
@@ -228,7 +245,34 @@ export default function NewComplaintPage() {
             <div className="border-t border-gray-100 pt-5">
               <h3 className="text-sm font-bold text-gray-900 mb-3">Event details</h3>
 
-              {/* Event selection */}
+              {/* Organizer selection */}
+              <div className="mb-4">
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                  Select the organizer *
+                </label>
+                {loading ? (
+                  <div className="input-field animate-pulse bg-gray-100" />
+                ) : (
+                  <div className="relative">
+                    <select
+                      value={form.organizerId}
+                      onChange={(e) => handleOrganizerChange(e.target.value)}
+                      required
+                      className="input-field appearance-none pr-10 cursor-pointer"
+                    >
+                      <option value="">Choose organizer...</option>
+                      {organizers.map((organizer) => (
+                        <option key={organizer.id} value={organizer.id}>
+                          {organizer.organizationName || organizer.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                )}
+              </div>
+
+              {/* Event selection filtered by organizer */}
               <div className="mb-4">
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">
                   Select the event *
@@ -241,10 +285,15 @@ export default function NewComplaintPage() {
                       value={form.eventId}
                       onChange={(e) => handleEventChange(e.target.value)}
                       required
+                      disabled={!form.organizerId}
                       className="input-field appearance-none pr-10 cursor-pointer"
                     >
-                      <option value="">Choose the event you attended...</option>
-                      {events.map((event) => (
+                      <option value="">
+                        {form.organizerId
+                          ? "Choose an event from this organizer..."
+                          : "Select an organizer first..."}
+                      </option>
+                      {organizerEvents.map((event) => (
                         <option key={event.id} value={event.id}>
                           {event.title} — {new Date(event.date).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" })}
                         </option>
@@ -253,34 +302,32 @@ export default function NewComplaintPage() {
                     <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 )}
+                {form.organizerId && organizerEvents.length === 0 && !loading && (
+                  <p className="text-xs text-gray-400 mt-2">
+                    No events found for this organizer.
+                  </p>
+                )}
               </div>
 
               {/* Auto-filled organizer */}
-              {selectedEvent && form.organizerId && (
+              {selectedEvent && selectedOrganizer && (
                 <div className="mb-4">
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                    Organizer (auto-selected)
+                    Organizer selected
                   </label>
                   <div className="input-field bg-gray-50 text-gray-500 flex items-center gap-2">
-                    {(() => {
-                      const org = organizers.find(
-                        (o) => o.id === form.organizerId
-                      );
-                      return org
-                        ? `${org.organizationName || org.name} (${org.email})`
-                        : "Organizer will be assigned automatically";
-                    })()}
+                    {`${selectedOrganizer.organizationName || selectedOrganizer.name} (${selectedOrganizer.email})`}
                   </div>
                   <p className="text-xs text-gray-400 mt-1">
-                    Your complaint will go directly to this organizer
+                    Your complaint will go directly to this organizer.
                   </p>
                 </div>
               )}
 
-              {!selectedEvent && (
+              {!selectedEvent && form.organizerId && (
                 <div className="mb-4 p-3 bg-amber-50 border border-amber-100 rounded-xl">
                   <p className="text-xs text-amber-700">
-                    Please select an event first — the organizer will be assigned automatically
+                    Please select an event from the chosen organizer.
                   </p>
                 </div>
               )}

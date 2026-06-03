@@ -114,6 +114,7 @@ export default function OrganizerDashboard() {
   const [showNewEvent, setShowNewEvent] = useState(false);
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [settingsData, setSettingsData] = useState<any>(null);
+  const [profileData, setProfileData] = useState<any>(null);
 
   const user = session?.user as SessionUser | undefined;
 
@@ -127,14 +128,18 @@ export default function OrganizerDashboard() {
         fetch("/api/events?mine=true").then((r) => r.json()),
         fetch("/api/analytics").then((r) => r.json()),
         fetch("/api/settings").then((r) => r.json()),
+        fetch("/api/profile").then((r) => r.json()),
       ])
-        .then(([eventsRes, analyticsRes, settingsRes]) => {
+        .then(([eventsRes, analyticsRes, settingsRes, profileRes]) => {
           setEvents(eventsRes.data || []);
           if (analyticsRes.success) {
             setAnalyticsData(analyticsRes.data);
           }
           if (settingsRes.success) {
             setSettingsData(settingsRes.data);
+          }
+          if (profileRes.data) {
+            setProfileData(profileRes.data);
           }
           setLoading(false);
         })
@@ -239,6 +244,7 @@ export default function OrganizerDashboard() {
         }}
         userName={user?.name || "Organizer"}
         userEmail={user?.email || ""}
+        userImage={profileData?.image || (user as any)?.image || null}
         mobileOpen={mobileMenuOpen}
         onMobileClose={() => setMobileMenuOpen(false)}
         badges={{ complaints: 2 }}
@@ -249,6 +255,7 @@ export default function OrganizerDashboard() {
           title={tabInfo.title}
           subtitle={tabInfo.subtitle}
           userName={user?.name || "Organizer"}
+          userImage={profileData?.image || (user as any)?.image || null}
           userRole="organizer"
           onMobileMenuOpen={() => setMobileMenuOpen(true)}
         />
@@ -283,6 +290,35 @@ export default function OrganizerDashboard() {
                         <Plus className="w-3.5 h-3.5" /> Create event
                       </Link>
                     </div>
+
+                    {/* Profile card with bio */}
+                    {profileData && (
+                      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <h3 className="text-sm font-bold text-white mb-1">
+                              {profileData.name || user?.name}
+                            </h3>
+                            {profileData.bio && (
+                              <p className="text-xs text-gray-400 leading-relaxed">
+                                {profileData.bio}
+                              </p>
+                            )}
+                            {!profileData.bio && (
+                              <p className="text-xs text-gray-600 italic">
+                                No bio added yet
+                              </p>
+                            )}
+                          </div>
+                          <Link
+                            href="/dashboard/profile"
+                            className="text-xs text-purple-400 hover:text-purple-300 font-semibold px-3 py-1.5 bg-purple-500/10 rounded-lg border border-purple-500/20 hover:border-purple-500/40 transition-all"
+                          >
+                            Edit
+                          </Link>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Stats */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

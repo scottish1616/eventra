@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -19,6 +19,11 @@ import {
   ChevronRight,
   Star,
 } from "lucide-react";
+import GlassHero from "@/components/ui/GlassHero";
+import { motion } from "framer-motion";
+import Card from "@/components/ui/Card";
+import EventPreviewModal from "@/components/events/EventPreviewModal";
+import { Eye } from "lucide-react";
 
 interface Event {
   id: string;
@@ -39,6 +44,8 @@ export default function HomePage() {
   const [activeSection, setActiveSection] = useState<
     "events" | "organizer" | "attendee" | "about"
   >("events");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewEvent, setPreviewEvent] = useState<Event | null>(null);
 
   useEffect(() => {
     fetch("/api/events")
@@ -226,44 +233,17 @@ export default function HomePage() {
         {activeSection === "events" && (
           <div className="flex-1">
             {/* Hero */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-purple-700 to-blue-700 py-16 px-6">
-              <div
-                className="absolute inset-0 opacity-10"
-                style={{
-                  backgroundImage: `radial-gradient(circle at 25% 25%, white 1px, transparent 1px)`,
-                  backgroundSize: "40px 40px",
-                }}
-              />
-              <div className="relative max-w-3xl mx-auto text-center">
-                <h1 className="text-3xl md:text-5xl font-bold text-white mb-3 leading-tight">
-                  Find your next event
-                </h1>
-                <p className="text-purple-100 mb-8">
-                  Browse events across Kenya. Pay with M-Pesa. No account
-                  needed.
-                </p>
-                <div className="flex gap-2 bg-white rounded-2xl p-2 shadow-2xl max-w-xl mx-auto">
-                  <div className="flex-1 flex items-center gap-3 px-3">
-                    <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                    <input
-                      type="text"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search events by name or city..."
-                      className="flex-1 text-sm text-gray-900 focus:outline-none bg-transparent"
-                    />
+            <div>
+              <React.Suspense fallback={
+                <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-purple-700 to-blue-700 py-16 px-6">
+                  <div className="relative max-w-3xl mx-auto text-center">
+                    <h1 className="text-3xl md:text-5xl font-bold text-white mb-3 leading-tight">Find your next event</h1>
+                    <p className="text-purple-100 mb-8">Browse events across Kenya. Pay with M-Pesa. No account needed.</p>
                   </div>
-                  <button className="btn-primary text-sm py-2.5 px-6 rounded-xl">
-                    Search
-                  </button>
                 </div>
-              </div>
-              <svg
-                viewBox="0 0 1440 60"
-                className="absolute bottom-0 left-0 w-full fill-gray-50"
-              >
-                <path d="M0,60 C360,0 1080,60 1440,0 L1440,60 L0,60 Z" />
-              </svg>
+              }>
+                <GlassHero search={search} setSearch={setSearch} />
+              </React.Suspense>
             </div>
 
             {/* Events grid */}
@@ -281,15 +261,15 @@ export default function HomePage() {
               </div>
 
               {loading ? (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="card p-6 animate-pulse">
-                      <div className="h-40 bg-gray-100 rounded-xl mb-4" />
-                      <div className="h-4 bg-gray-100 rounded mb-2" />
-                      <div className="h-3 bg-gray-100 rounded w-2/3" />
-                    </div>
-                  ))}
-                </div>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="glass-card p-6 animate-pulse">
+                        <div className="h-40 bg-gray-800 rounded-xl mb-4" />
+                        <div className="h-4 bg-gray-800 rounded mb-2" />
+                        <div className="h-3 bg-gray-800 rounded w-2/3" />
+                      </div>
+                    ))}
+                  </div>
               ) : filtered.length === 0 ? (
                 <div className="card p-16 text-center">
                   <p className="text-5xl mb-4">🔍</p>
@@ -299,14 +279,27 @@ export default function HomePage() {
                   </p>
                 </div>
               ) : (
+                <>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filtered.map((event) => (
-                    <Link
+                    <Card
                       key={event.id}
-                      href={`/event/${event.slug}/buy`}
-                      className="card overflow-hidden hover:shadow-xl hover:shadow-purple-100 transition-all duration-300 hover:-translate-y-1 group"
+                      as="article"
+                      variant="glass"
+                      className="overflow-hidden floating transition-transform duration-300 group cursor-pointer"
+                      onClick={() => router.push(`/event/${event.slug}/buy`)}
                     >
                       <div className="h-44 bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center relative overflow-hidden">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreviewEvent(event);
+                            setPreviewOpen(true);
+                          }}
+                          className="absolute left-3 top-3 z-20 bg-white/10 text-white/90 p-2 rounded-lg hover:bg-white/20"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
                         <div
                           className="absolute inset-0 opacity-20"
                           style={{
@@ -320,15 +313,15 @@ export default function HomePage() {
                         </span>
                       </div>
                       <div className="p-5">
-                        <h3 className="font-bold text-gray-900 text-base mb-3 group-hover:text-purple-600 transition-colors line-clamp-2">
+                        <h3 className="font-bold text-white text-base mb-3 group-hover:text-purple-300 transition-colors line-clamp-2">
                           {event.title}
                         </h3>
                         <div className="space-y-1.5 mb-4">
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <div className="flex items-center gap-2 text-xs text-white/70">
                             <Calendar className="w-3.5 h-3.5 text-purple-400" />
                             {formatDate(event.date)}
                           </div>
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <div className="flex items-center gap-2 text-xs text-white/70">
                             <MapPin className="w-3.5 h-3.5 text-purple-400" />
                             {event.location}
                           </div>
@@ -346,9 +339,11 @@ export default function HomePage() {
                           </div>
                         </div>
                       </div>
-                    </Link>
+                    </Card>
                   ))}
                 </div>
+                <EventPreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} event={previewEvent} />
+                </>
               )}
             </div>
           </div>
@@ -473,10 +468,10 @@ export default function HomePage() {
               <p className="text-sm text-gray-400 mt-3">
                 Need an account? Contact{" "}
                 <a
-                  href="mailto:admin@eventra.app"
+                  href="mailto:admin@gmail.com"
                   className="text-purple-600 hover:underline"
                 >
-                  admin@eventra.app
+                  admin@gmail.com
                 </a>
               </p>
             </div>
