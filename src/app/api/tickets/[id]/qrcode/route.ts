@@ -4,7 +4,7 @@ import { generateSignedPayload } from "@/lib/qrcode";
 import QRCode from "qrcode";
 
 type TicketQrCodeContext = {
-  params?: Promise<{ id: string }>;
+  params: Promise<{ id: string }>;
 };
 
 export async function GET(
