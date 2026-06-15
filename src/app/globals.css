@@ -21,6 +21,26 @@
     --card-elev: 0 10px 40px rgba(2,6,23,0.5);
   }
 
+  .light {
+    --bg-950: #f9fafb;
+    --bg-900: #f3f4f6;
+    --bg-800: #e5e7eb;
+    --surface: rgba(255, 255, 255, 0.95);
+    --surface-soft: rgba(0, 0, 0, 0.02);
+    --surface-strong: rgba(255, 255, 255, 0.99);
+    --glass-bg: rgba(0, 0, 0, 0.02);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --border-surface: rgba(209, 213, 219, 0.5);
+    --primary-500: #7c3aed;
+    --primary-600: #5b21b6;
+    --accent-500: #2563eb;
+    --accent-400: #60a5fa;
+    --muted: #6b7280;
+    --text: #1f2937;
+    --text-muted: #6b7280;
+    --card-elev: 0 10px 40px rgba(0, 0, 0, 0.08);
+  }
+
   .page-bg {
     min-height: 100vh;
     background: linear-gradient(180deg, var(--bg-900), var(--bg-950));
