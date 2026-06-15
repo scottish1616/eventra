@@ -2,14 +2,124 @@
 
 @layer utilities {
   :root {
+    --bg-950: #050814;
     --bg-900: #0b1020;
-    --glass-bg: rgba(255,255,255,0.04);
-    --glass-border: rgba(255,255,255,0.06);
+    --bg-800: #111827;
+    --surface: rgba(15, 23, 42, 0.88);
+    --surface-soft: rgba(255, 255, 255, 0.03);
+    --surface-strong: rgba(8, 15, 32, 0.96);
+    --glass-bg: rgba(255,255,255,0.05);
+    --glass-border: rgba(255,255,255,0.08);
+    --border-surface: rgba(148,163,184,0.18);
     --primary-500: #7c3aed;
-    --primary-600: #6d28d9;
+    --primary-600: #5b21b6;
+    --accent-500: #2563eb;
     --accent-400: #60a5fa;
-    --muted: #9ca3af;
-    --card-elev: 0 6px 24px rgba(2,6,23,0.6);
+    --muted: #94a3b8;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --card-elev: 0 10px 40px rgba(2,6,23,0.5);
+  }
+
+  .page-bg {
+    min-height: 100vh;
+    background: linear-gradient(180deg, var(--bg-900), var(--bg-950));
+    color: var(--text);
+  }
+
+  .surface-card {
+    background: var(--surface);
+    border: 1px solid var(--border-surface);
+    box-shadow: var(--card-elev);
+    border-radius: 1rem;
+  }
+
+  .surface-card-soft {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+  }
+
+  .surface-border {
+    border-color: var(--border-surface);
+  }
+
+  .surface-text {
+    color: var(--text);
+  }
+
+  .page-text {
+    color: var(--text);
+  }
+
+  .muted-text {
+    color: var(--text-muted);
+  }
+
+  .input-surface {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.875rem;
+    color: var(--text);
+    transition: all 0.2s ease;
+    outline: none;
+  }
+
+  .input-surface::placeholder {
+    color: rgba(226, 232, 240, 0.65);
+  }
+
+  .input-surface:focus {
+    border-color: rgba(124, 58, 237, 0.6);
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  }
+
+  .link-accent {
+    color: var(--accent-400);
+    transition: color 0.2s ease;
+  }
+
+  .link-accent:hover {
+    color: var(--accent-500);
+  }
+
+  .surface-panel {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1.5rem;
+    box-shadow: 0 15px 40px rgba(2, 6, 23, 0.35);
+  }
+
+  .surface-panel-soft {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 1.25rem;
+  }
+
+  .brand-gradient {
+    background: linear-gradient(90deg, var(--primary-500), var(--accent-500));
+    color: white;
+  }
+
+  .btn-brand {
+    background: linear-gradient(90deg, var(--primary-500), var(--accent-500));
+    color: white;
+    font-weight: 600;
+    border-radius: 1rem;
+    padding: 0.85rem 1.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    box-shadow: 0 14px 30px rgba(124, 58, 237, 0.28);
+  }
+
+  .btn-brand:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
   }
 
   /* Glass / Neumorphism helpers */
@@ -61,10 +171,10 @@
     box-shadow: 0 8px 30px rgba(2,6,23,0.5);
   }
   .card-light {
-    background: white;
+    background: rgba(255, 255, 255, 0.04);
     border-radius: 1rem;
-    border: 1px solid #f3f4f6;
-    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 10px 30px rgba(2, 6, 23, 0.35);
   }
   .btn-primary {
     background: linear-gradient(to right, #7c3aed, #2563eb);
@@ -125,18 +235,21 @@
   }
   .input-field {
     width: 100%;
-    padding: 0.625rem 1rem;
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.875rem;
     font-size: 0.875rem;
-    color: #111827;
+    color: var(--text);
     transition: all 0.2s;
     outline: none;
   }
+  .input-field::placeholder {
+    color: rgba(226, 232, 240, 0.6);
+  }
   .input-field:focus {
-    border-color: #7c3aed;
-    box-shadow: 0 0 0 3px rgb(124 58 237 / 0.1);
+    border-color: rgba(124, 58, 237, 0.6);
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
   }
   .skeleton {
     background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);

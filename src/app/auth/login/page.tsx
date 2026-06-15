@@ -50,31 +50,36 @@ export default function OrganizerLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen page-bg text-slate-200 flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-md">
+        <div className="text-left mb-6">
+          <Link href="/" className="text-sm text-slate-400 hover:text-slate-200 inline-flex items-center gap-1">
+            ← Back to home
+          </Link>
+        </div>
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center shadow-lg">
               <Ticket className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-2xl text-gray-900">Eventra</span>
+            <span className="font-bold text-2xl text-white">Eventra</span>
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Organizer sign in</h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-white">Organizer sign in</h1>
+          <p className="text-slate-400 text-sm mt-1">
             Sign in to manage your events
           </p>
         </div>
 
-        <div className="card p-8 shadow-xl shadow-gray-100">
+        <div className="surface-card p-8 shadow-xl shadow-slate-900/20">
           {error && (
-            <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl">
-              <p className="text-sm text-red-700 font-medium">{error}</p>
+            <div className="mb-5 p-4 bg-red-900/60 border border-red-700/50 rounded-xl">
+              <p className="text-sm text-red-100 font-medium">{error}</p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-slate-300 mb-2">
                 Email address
               </label>
               <input
@@ -88,7 +93,7 @@ export default function OrganizerLoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-slate-300 mb-2">
                 Password
               </label>
               <div className="relative">
@@ -103,7 +108,7 @@ export default function OrganizerLoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPw(!showPw)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
                 >
                   {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -126,10 +131,10 @@ export default function OrganizerLoginPage() {
         </div>
 
         <div className="mt-6 space-y-3">
-          <div className="card p-4 text-center">
-            <p className="text-xs text-gray-500">
+          <div className="surface-card p-4 text-center">
+            <p className="text-xs text-slate-400">
               Looking to buy tickets?{" "}
-              <Link href="/" className="text-purple-600 font-semibold hover:underline">
+              <Link href="/" className="text-purple-300 font-semibold hover:text-white hover:underline">
                 Browse events
               </Link>
               {" "}— no account needed
@@ -138,7 +143,7 @@ export default function OrganizerLoginPage() {
           <div className="text-center">
             <Link
               href="/auth/admin-login"
-              className="text-xs text-gray-400 hover:text-gray-600"
+              className="text-xs text-slate-400 hover:text-slate-200"
             >
               Admin portal →
             </Link>

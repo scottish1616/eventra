@@ -76,37 +76,37 @@ export default function OrganizerRegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 py-8">
+    <div className="min-h-screen page-bg text-slate-200 flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
         <Link
           href="/auth/register"
-          className="text-sm text-gray-400 hover:text-gray-600 mb-6 flex items-center gap-1"
+          className="text-sm text-slate-400 hover:text-slate-200 mb-6 flex items-center gap-1"
         >
           ← Back
         </Link>
 
-        <div className="bg-white rounded-3xl shadow-lg p-8">
+        <div className="surface-card rounded-3xl shadow-lg p-8">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-purple-600" />
+            <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-purple-300" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-white">
                 Organizer Registration
               </h2>
-              <p className="text-xs text-gray-500">Pending admin approval</p>
+              <p className="text-xs text-slate-400">Pending admin approval</p>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              <div className="rounded-2xl bg-red-900/60 border border-red-700/50 px-4 py-3 text-sm text-red-100">
                 {error}
               </div>
             )}
 
             <label className="block">
-              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
                 Full Name
               </span>
               <input
@@ -115,12 +115,12 @@ export default function OrganizerRegisterPage() {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="John Doe"
-                className="mt-2 w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-2 w-full px-4 py-3 rounded-2xl border border-slate-700 bg-slate-950 text-sm font-bold text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </label>
 
             <label className="block">
-              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
                 Email
               </span>
               <input
@@ -129,12 +129,12 @@ export default function OrganizerRegisterPage() {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="you@example.com"
-                className="mt-2 w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-2 w-full px-4 py-3 rounded-2xl border border-slate-700 bg-slate-950 text-sm font-bold text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </label>
 
             <label className="block">
-              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
                 Organization Name
               </span>
               <input
@@ -143,12 +143,12 @@ export default function OrganizerRegisterPage() {
                 value={formData.organizationName}
                 onChange={handleChange}
                 placeholder="Your company name"
-                className="mt-2 w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-2 w-full px-4 py-3 rounded-2xl border border-slate-700 bg-slate-950 text-sm font-bold text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </label>
 
             <label className="block">
-              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
                 Phone
               </span>
               <input
@@ -157,12 +157,12 @@ export default function OrganizerRegisterPage() {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="0712 345 678"
-                className="mt-2 w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-2 w-full px-4 py-3 rounded-2xl border border-slate-700 bg-slate-950 text-sm font-bold text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </label>
 
             <label className="block">
-              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
                 Password
               </span>
               <input
@@ -171,7 +171,7 @@ export default function OrganizerRegisterPage() {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="At least 6 characters"
-                className="mt-2 w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-2 w-full px-4 py-3 rounded-2xl border border-slate-700 bg-slate-950 text-sm font-bold text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </label>
 
@@ -184,16 +184,16 @@ export default function OrganizerRegisterPage() {
             </button>
           </form>
 
-          <p className="text-xs text-gray-500 text-center mt-6">
+          <p className="text-xs text-slate-400 text-center mt-6">
             Your account will be reviewed by admin before you can create events
           </p>
         </div>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
+        <p className="text-center text-sm text-slate-400 mt-6">
           Already registered?{" "}
           <Link
             href="/auth/login"
-            className="text-purple-600 hover:text-purple-700 font-semibold"
+            className="text-purple-300 hover:text-white font-semibold"
           >
             Sign in here
           </Link>

@@ -50,21 +50,21 @@ export default function CheckoutClientPage() {
   }, [orderId]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen page-bg flex items-center justify-center px-4 text-slate-200">
       <div className="max-w-md w-full">
-        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 text-center">
+        <div className="surface-card rounded-3xl p-8 text-center">
           {status === "pending" && (
             <>
-              <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-5">
-                <Smartphone className="w-10 h-10 text-green-500" />
+              <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-5">
+                <Smartphone className="w-10 h-10 text-emerald-300" />
               </div>
-              <h1 className="text-xl font-bold text-gray-900 mb-2">Check your phone</h1>
-              <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+              <h1 className="text-xl font-bold text-white mb-2">Check your phone</h1>
+              <p className="text-slate-400 text-sm mb-6 leading-relaxed">
                 An M-Pesa STK push has been sent to your phone. Enter your M-Pesa PIN to complete payment.
               </p>
-              <div className="flex items-center justify-center gap-3 bg-green-50 border border-green-200 rounded-2xl p-4 mb-6">
-                <Clock className="w-5 h-5 text-green-600 flex-shrink-0 animate-spin" />
-                <p className="text-sm text-green-700 font-medium">Waiting for payment confirmation...</p>
+              <div className="flex items-center justify-center gap-3 bg-emerald-500/10 border border-emerald-400/20 rounded-2xl p-4 mb-6">
+                <Clock className="w-5 h-5 text-emerald-300 flex-shrink-0 animate-spin" />
+                <p className="text-sm text-emerald-200 font-medium">Waiting for payment confirmation...</p>
               </div>
               <div className="flex gap-1 justify-center">
                 {[1, 2, 3].map((i) => (
@@ -75,42 +75,42 @@ export default function CheckoutClientPage() {
                   />
                 ))}
               </div>
-              <p className="text-xs text-gray-400 mt-4">Do not close this page · Attempt {attempts + 1}/20</p>
+              <p className="text-xs text-slate-400 mt-4">Do not close this page · Attempt {attempts + 1}/20</p>
             </>
           )}
 
           {status === "confirmed" && (
             <>
-              <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-5">
-                <CheckCircle className="w-10 h-10 text-emerald-500" />
+              <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-5">
+                <CheckCircle className="w-10 h-10 text-emerald-300" />
               </div>
-              <h1 className="text-xl font-bold text-gray-900 mb-2">Payment confirmed!</h1>
-              <p className="text-gray-500 text-sm mb-6">Your M-Pesa payment was successful. Your tickets are ready.</p>
+              <h1 className="text-xl font-bold text-white mb-2">Payment confirmed!</h1>
+              <p className="text-slate-400 text-sm mb-6">Your M-Pesa payment was successful. Your tickets are ready.</p>
               {tickets.length > 0 && (
                 <div className="space-y-2 mb-6">
                   {tickets.map((ticketId, i) => (
                     <Link
                       key={ticketId}
                       href={`/ticket/view/${ticketId}`}
-                      className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 hover:border-purple-200 transition"
+                      className="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 hover:border-purple-400 transition"
                     >
-                      <span className="text-sm font-semibold text-gray-700">Ticket {i + 1}</span>
-                      <span className="text-xs text-purple-600 font-semibold">View →</span>
+                      <span className="text-sm font-semibold text-slate-100">Ticket {i + 1}</span>
+                      <span className="text-xs text-purple-300 font-semibold">View →</span>
                     </Link>
                   ))}
                 </div>
               )}
-              <Link href="/" className="text-sm text-gray-400 hover:text-gray-600">Browse more events</Link>
+              <Link href="/" className="text-sm text-slate-400 hover:text-slate-200">Browse more events</Link>
             </>
           )}
 
           {status === "failed" && (
             <>
-              <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-5">
-                <XCircle className="w-10 h-10 text-red-400" />
+              <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-5">
+                <XCircle className="w-10 h-10 text-red-300" />
               </div>
-              <h1 className="text-xl font-bold text-gray-900 mb-2">Payment failed</h1>
-              <p className="text-gray-500 text-sm mb-6">Your M-Pesa payment was not completed. Please try again.</p>
+              <h1 className="text-xl font-bold text-white mb-2">Payment failed</h1>
+              <p className="text-slate-400 text-sm mb-6">Your M-Pesa payment was not completed. Please try again.</p>
               <button
                 onClick={() => router.back()}
                 className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition"
@@ -122,11 +122,11 @@ export default function CheckoutClientPage() {
 
           {status === "timeout" && (
             <>
-              <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-5">
-                <Clock className="w-10 h-10 text-amber-500" />
+              <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-5">
+                <Clock className="w-10 h-10 text-amber-300" />
               </div>
-              <h1 className="text-xl font-bold text-gray-900 mb-2">Taking too long</h1>
-              <p className="text-gray-500 text-sm mb-6">
+              <h1 className="text-xl font-bold text-white mb-2">Taking too long</h1>
+              <p className="text-slate-400 text-sm mb-6">
                 We could not confirm your payment. If you entered your PIN, your tickets will be sent once M-Pesa confirms.
               </p>
               <Link
@@ -137,7 +137,7 @@ export default function CheckoutClientPage() {
               </Link>
               <button
                 onClick={() => router.back()}
-                className="w-full border border-gray-200 text-gray-600 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition"
+                className="w-full border border-slate-700 text-slate-200 py-3 rounded-xl text-sm font-medium hover:bg-slate-900 transition"
               >
                 Try again
               </button>
