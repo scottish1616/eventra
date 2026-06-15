@@ -65,7 +65,7 @@ function TicketLookupContent() {
           <h1 className="mt-6 text-2xl font-bold text-gray-900">
             Find your ticket
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-gray-600">
             Enter your ticket number to view your QR code
           </p>
         </div>
@@ -87,12 +87,12 @@ function TicketLookupContent() {
                 value={ticketNumber}
                 onChange={(e) => setTicketNumber(e.target.value.toUpperCase())}
                 placeholder="e.g. NAI-2025-123456"
-                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
+                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleLookup();
                 }}
               />
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1 text-xs text-gray-600">
                 Found on your ticket confirmation
               </p>
             </div>
@@ -107,7 +107,7 @@ function TicketLookupContent() {
           </div>
         </div>
 
-        <p className="mt-5 text-center text-sm text-gray-500">
+        <p className="mt-5 text-center text-sm text-gray-600">
           <Link href="/" className="text-violet-600 hover:underline">
             Browse events
           </Link>

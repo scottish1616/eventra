@@ -114,6 +114,8 @@ export default function PublicTicketPage() {
 
   const gradient =
     categoryGradients[ticket.ticketType?.category || "REGULAR"];
+  const qrSrc = ticket.qrCode || `/api/tickets/${ticket.id}/qrcode`;
+  const hasQr = Boolean(ticket.qrCode || ticket.qrCodeData);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -188,10 +190,10 @@ export default function PublicTicketPage() {
 
           {/* QR Code */}
           <div className="px-6 py-6 flex flex-col items-center">
-            {ticket.qrCode ? (
+            {hasQr ? (
               <div className="bg-white p-3 rounded-2xl border-2 border-gray-100 shadow-sm mb-4">
                 <img
-                  src={ticket.qrCode}
+                  src={qrSrc}
                   alt="QR Code"
                   width={200}
                   height={200}

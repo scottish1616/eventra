@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Upload } from "lucide-react";
 
 interface TicketTypeForm {
+  id?: string;
   category: "REGULAR" | "VIP" | "VVIP";
   name: string;
   description: string;
@@ -15,11 +16,14 @@ interface TicketTypeForm {
   maxPerOrder: number;
 }
 
-export default function NewEventPage() {
+export default function EditEventPage() {
   const router = useRouter();
+  const params = useParams();
+  const eventId = params.id as string;
   const { data: session, status } = useSession();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const [form, setForm] = useState({
@@ -30,18 +34,79 @@ export default function NewEventPage() {
     location: "",
     venue: "",
     coverImageFile: null as File | null,
+    existingCoverImage: null as string | null,
   });
 
-  const [ticketTypes, setTicketTypes] = useState<TicketTypeForm[]>([
-    {
-      category: "REGULAR",
-      name: "Regular",
-      description: "",
-      price: 0,
-      totalSlots: 100,
-      maxPerOrder: 10,
-    },
-  ]);
+  const [ticketTypes, setTicketTypes] = useState<TicketTypeForm[]>([]);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
+      return;
+    }
+
+    if (status === "authenticated") {
+      fetchEvent();
+    }
+  }, [status, eventId]);
+
+  const fetchEvent = async () => {
+    if (!eventId) {
+      const errorMsg = "Invalid event ID.";
+      console.error("Event fetch error:", errorMsg);
+      setError(errorMsg);
+      setFetching(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/events/${encodeURIComponent(eventId)}`);
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        const errorMsg = json?.error || res.statusText || "Event not found";
+        console.error("Event fetch error:", errorMsg);
+        setError(errorMsg);
+        setFetching(false);
+        return;
+      }
+
+      const event = json.data;
+      setForm({
+        title: event.title || "",
+        description: event.description || "",
+        date: event.date ? new Date(event.date).toISOString().slice(0, 16) : "",
+        endDate: event.endDate ? new Date(event.endDate).toISOString().slice(0, 16) : "",
+        location: event.location || "",
+        venue: event.venue || "",
+        coverImageFile: null,
+        existingCoverImage: event.coverImage || null,
+      });
+
+      if (event.coverImage) {
+        setImagePreview(event.coverImage);
+      }
+
+      setTicketTypes(event.ticketTypes || []);
+      setFetching(false);
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setError("Failed to load event. Please try again.");
+      setFetching(false);
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setForm({ ...form, coverImageFile: file });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const addTicketType = () => {
     setTicketTypes((prev) => [
@@ -71,18 +136,6 @@ export default function NewEventPage() {
     );
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setForm({ ...form, coverImageFile: file });
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -107,15 +160,17 @@ export default function NewEventPage() {
       }
       formData.append("ticketTypes", JSON.stringify(ticketTypes));
 
-      const res = await fetch("/api/events", {
-        method: "POST",
+      const res = await fetch(`/api/events/${encodeURIComponent(eventId)}`, {
+        method: "PUT",
         body: formData,
       });
 
       const json = await res.json();
 
-      if (!json.success) {
-        setError(json.error || "Failed to create event");
+      if (!res.ok || !json.success) {
+        const errorMsg = json?.error || res.statusText || "Failed to update event";
+        console.error("Event update error:", errorMsg);
+        setError(errorMsg);
         setLoading(false);
         return;
       }
@@ -128,17 +183,12 @@ export default function NewEventPage() {
     }
   };
 
-  if (status === "loading") {
+  if (status === "loading" || fetching) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <p className="text-gray-500 text-sm">Loading...</p>
       </div>
     );
-  }
-
-  if (status === "unauthenticated") {
-    router.push("/auth/login");
-    return null;
   }
 
   const categoryColors: Record<string, string> = {
@@ -171,8 +221,14 @@ export default function NewEventPage() {
             ← Dashboard
           </Link>
           <span className="text-gray-400">/</span>
-          <h1 className="text-xl font-bold text-gray-900">Create new event</h1>
+          <h1 className="text-xl font-bold text-gray-900">Edit event</h1>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Event details */}
@@ -279,7 +335,7 @@ export default function NewEventPage() {
                         className="h-40 w-full object-cover rounded-lg mx-auto"
                       />
                       <p className="text-sm font-semibold text-gray-900">
-                        {form.coverImageFile?.name}
+                        {form.coverImageFile?.name || "Current image"}
                       </p>
                       <button
                         type="button"
@@ -368,7 +424,7 @@ export default function NewEventPage() {
                         Ticket name
                       </label>
                       <input
-                        value={tt.name}
+                        value={tt.name || ""}
                         onChange={(e) =>
                           updateTicketType(index, "name", e.target.value)
                         }
@@ -442,7 +498,7 @@ export default function NewEventPage() {
                       Description (optional)
                     </label>
                     <input
-                      value={tt.description}
+                      value={tt.description || ""}
                       onChange={(e) =>
                         updateTicketType(index, "description", e.target.value)
                       }
@@ -473,7 +529,7 @@ export default function NewEventPage() {
               disabled={loading}
               className="flex-1 flex items-center justify-center gap-2 bg-violet-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-violet-700 transition disabled:opacity-60"
             >
-              {loading ? "Creating..." : "Create event"}
+              {loading ? "Saving..." : "Save changes"}
             </button>
           </div>
         </form>

@@ -10,11 +10,22 @@ function getSupabase() {
   );
 }
 
+const nextAuthUrl = process.env.NEXTAUTH_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
+if (nextAuthUrl) {
+  process.env.NEXTAUTH_URL = nextAuthUrl;
+}
+const nextAuthSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+if (nextAuthSecret) {
+  process.env.NEXTAUTH_SECRET = nextAuthSecret;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+  secret: nextAuthSecret,
   trustHost: true,
   session: { strategy: "jwt" },
   pages: { signIn: "/auth/login" },
+  debug: process.env.NODE_ENV !== "production",
   providers: [
     Credentials({
       credentials: {

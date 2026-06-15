@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { parseMpesaCallback } from "@/lib/mpesa";
+import { generateQRCode } from "@/lib/qrcode";
 
 function getSupabase() {
   return createClient(
@@ -99,26 +100,21 @@ export async function POST(req: NextRequest) {
       for (let i = 0; i < item.quantity; i++) {
         const ticketId = crypto.randomUUID();
         const ticketNumber = generateTicketNumber(event?.title || "EVT");
+          const qrPayload = `eventra:ticket:${ticketId}:${order.eventId}:${Date.now()}`;
+          const qrCode = await generateQRCode(qrPayload);
 
-        await supabase.from("tickets").insert({
-          id: ticketId,
-          ticketNumber,
-          userId: order.userId,
-          eventId: order.eventId,
-          orderId: order.id,
-          ticketTypeId: item.ticketTypeId,
-          attendeeName: order.buyerName,
-          attendeeEmail: order.buyerEmail,
-          qrCode: "",
-          qrCodeData: `eventra:ticket:${ticketId}:${order.eventId}:${Date.now()}`,
-        });
-      }
-
-      if (tt) {
-        await supabase
-          .from("ticket_types")
-          .update({ soldCount: (tt.soldCount || 0) + item.quantity })
-          .eq("id", item.ticketTypeId);
+          await supabase.from("tickets").insert({
+            id: ticketId,
+            ticketNumber,
+            userId: order.userId,
+            eventId: order.eventId,
+            orderId: order.id,
+            ticketTypeId: item.ticketTypeId,
+            attendeeName: order.buyerName,
+            attendeeEmail: order.buyerEmail,
+            qrCode,
+            qrCodeData: qrPayload,
+          });
       }
     }
 

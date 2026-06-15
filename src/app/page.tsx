@@ -32,6 +32,7 @@ interface Event {
   location: string;
   slug: string;
   ticketTypes: { price: number }[];
+  coverImage?: string;
 }
 
 export default function HomePage() {
@@ -120,19 +121,19 @@ export default function HomePage() {
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-gray-400 hover:text-gray-600"
+              className="lg:hidden text-gray-600 hover:text-gray-900"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-xs text-gray-600 mt-2">
             Kenya's event ticketing platform
           </p>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-3 mb-3">
+          <p className="text-xs font-bold text-gray-700 uppercase tracking-wider px-3 mb-3">
             Navigation
           </p>
           {navItems.map((item) => (
@@ -159,7 +160,7 @@ export default function HomePage() {
 
         {/* Ticket lookup in sidebar */}
         <div className="p-4 border-t border-gray-100">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+          <p className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">
             Find your ticket
           </p>
           <div className="flex gap-2">
@@ -168,7 +169,7 @@ export default function HomePage() {
               value={ticketNumber}
               onChange={(e) => setTicketNumber(e.target.value.toUpperCase())}
               placeholder="Ticket number..."
-              className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-xs placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono"
               onKeyDown={(e) => e.key === "Enter" && handleTicketLookup()}
             />
             <button
@@ -190,7 +191,7 @@ export default function HomePage() {
           </Link>
           <Link
             href="/auth/admin-login"
-            className="w-full flex items-center justify-center gap-2 text-xs text-gray-400 hover:text-gray-600 py-1"
+            className="w-full flex items-center justify-center gap-2 text-xs text-gray-600 hover:text-gray-900 font-medium py-1"
           >
             Admin portal →
           </Link>
@@ -253,7 +254,7 @@ export default function HomePage() {
                   <h2 className="text-xl font-bold text-gray-900">
                     {search ? `Results for "${search}"` : "Upcoming events"}
                   </h2>
-                  <p className="text-sm text-gray-400 mt-0.5">
+                  <p className="text-sm text-gray-600 mt-0.5">
                     {filtered.length} event{filtered.length !== 1 ? "s" : ""}{" "}
                     found
                   </p>
@@ -274,7 +275,7 @@ export default function HomePage() {
                 <div className="card p-16 text-center">
                   <p className="text-5xl mb-4">🔍</p>
                   <p className="text-gray-600 font-semibold">No events found</p>
-                  <p className="text-sm text-gray-400 mt-1">
+                  <p className="text-sm text-gray-600 mt-1">
                     Try a different search
                   </p>
                 </div>
@@ -289,7 +290,16 @@ export default function HomePage() {
                       className="overflow-hidden floating transition-transform duration-300 group cursor-pointer"
                       onClick={() => router.push(`/event/${event.slug}/buy`)}
                     >
-                      <div className="h-44 bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center relative overflow-hidden">
+                      <div className="h-44 relative overflow-hidden rounded-3xl">
+                        {event.coverImage ? (
+                          <img
+                            src={event.coverImage}
+                            alt={event.title}
+                            className="absolute inset-0 h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-blue-600" />
+                        )}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -307,6 +317,7 @@ export default function HomePage() {
                             backgroundSize: "20px 20px",
                           }}
                         />
+                        <div className="absolute inset-0 bg-black/10" />
                         <p className="text-5xl relative z-10">🎉</p>
                         <span className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full border border-white/30">
                           Live
@@ -328,7 +339,7 @@ export default function HomePage() {
                         </div>
                         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                           <div>
-                            <p className="text-xs text-gray-400">From</p>
+                            <p className="text-xs text-gray-600 font-medium">From</p>
                             <p className="text-base font-bold text-purple-600">
                               {formatCurrency(minPrice(event.ticketTypes))}
                             </p>
@@ -359,7 +370,7 @@ export default function HomePage() {
               <h1 className="text-3xl font-bold text-gray-900 mb-3">
                 For Organizers
               </h1>
-              <p className="text-gray-500 max-w-xl mx-auto">
+              <p className="text-gray-600 max-w-xl mx-auto">
                 Create events, sell tickets, manage attendees — all from one
                 powerful dashboard.
               </p>
@@ -406,7 +417,7 @@ export default function HomePage() {
                   <div className="text-3xl flex-shrink-0">{f.icon}</div>
                   <div>
                     <h3 className="font-bold text-gray-900 mb-1">{f.title}</h3>
-                    <p className="text-sm text-gray-500 leading-relaxed">
+                    <p className="text-sm text-gray-600 leading-relaxed">
                       {f.desc}
                     </p>
                   </div>
@@ -451,7 +462,7 @@ export default function HomePage() {
                       <p className="font-semibold text-gray-900 text-sm">
                         {s.t}
                       </p>
-                      <p className="text-xs text-gray-500 mt-0.5">{s.d}</p>
+                      <p className="text-xs text-gray-600 mt-0.5">{s.d}</p>
                     </div>
                   </div>
                 ))}
@@ -465,13 +476,13 @@ export default function HomePage() {
               >
                 Organizer sign in <ArrowRight className="w-5 h-5" />
               </Link>
-              <p className="text-sm text-gray-400 mt-3">
+              <p className="text-sm text-gray-600 font-medium mt-3">
                 Need an account? Contact{" "}
                 <a
-                  href="mailto:admin@gmail.com"
+                  href="mailto:kisakalevi15@gmail.com"
                   className="text-purple-600 hover:underline"
                 >
-                  admin@gmail.com
+                  kisakalevi15@gmail.com
                 </a>
               </p>
             </div>
@@ -482,13 +493,13 @@ export default function HomePage() {
         {activeSection === "attendee" && (
           <div className="flex-1 max-w-4xl mx-auto px-4 py-12">
             <div className="text-center mb-12">
-              <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <Users className="w-8 h-8 text-white" />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-3">
                 For Attendees
               </h1>
-              <p className="text-gray-500 max-w-xl mx-auto">
+              <p className="text-gray-600 max-w-xl mx-auto">
                 Buy tickets instantly with M-Pesa. No account needed. No app
                 required.
               </p>
@@ -534,7 +545,7 @@ export default function HomePage() {
                 ].map((s) => (
                   <div key={s.n} className="flex gap-5">
                     <div className="flex-shrink-0 text-center">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-white text-sm font-bold flex items-center justify-center shadow-md">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white text-sm font-bold flex items-center justify-center shadow-md">
                         {s.n}
                       </div>
                     </div>
@@ -543,7 +554,7 @@ export default function HomePage() {
                         <span className="text-xl">{s.icon}</span>
                         <p className="font-bold text-gray-900">{s.t}</p>
                       </div>
-                      <p className="text-sm text-gray-500 leading-relaxed">
+                      <p className="text-sm text-gray-600 leading-relaxed">
                         {s.d}
                       </p>
                     </div>
@@ -553,11 +564,11 @@ export default function HomePage() {
             </div>
 
             {/* Find ticket */}
-            <div className="card p-8 bg-gradient-to-r from-green-50 to-emerald-50 border-green-100 mb-8">
+            <div className="card p-8 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-100 mb-8">
               <h2 className="font-bold text-gray-900 text-lg mb-2">
                 Already have a ticket?
               </h2>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-gray-600 mb-4">
                 Enter your ticket number to view your QR code anytime.
               </p>
               <div className="flex gap-3">
@@ -568,15 +579,12 @@ export default function HomePage() {
                     setTicketNumber(e.target.value.toUpperCase())
                   }
                   placeholder="e.g. NAI-2025-123456"
-                  className="input-field flex-1 font-mono"
+                  className="input-field flex-1 font-mono bg-white text-gray-900 placeholder-gray-400 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500"
                   onKeyDown={(e) => e.key === "Enter" && handleTicketLookup()}
                 />
                 <button
                   onClick={handleTicketLookup}
                   className="btn-primary px-6 whitespace-nowrap"
-                  style={{
-                    background: "linear-gradient(to right, #16a34a, #059669)",
-                  }}
                 >
                   View ticket
                 </button>
@@ -587,15 +595,12 @@ export default function HomePage() {
               <button
                 onClick={() => setActiveSection("events")}
                 className="btn-primary inline-flex items-center gap-2 text-base px-8 py-4"
-                style={{
-                  background: "linear-gradient(to right, #16a34a, #059669)",
-                }}
               >
                 Browse events <ArrowRight className="w-5 h-5" />
               </button>
               <Link
                 href="/complaints/new"
-                className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
+                className="text-xs text-gray-600 hover:text-gray-900 font-medium transition-colors"
               >
                 Submit a complaint
               </Link>
@@ -613,7 +618,7 @@ export default function HomePage() {
               <h1 className="text-3xl font-bold text-gray-900 mb-3">
                 About Eventra
               </h1>
-              <p className="text-gray-500 max-w-xl mx-auto">
+              <p className="text-gray-600 max-w-xl mx-auto">
                 Kenya's modern event ticketing platform built for organizers and
                 attendees alike.
               </p>
@@ -642,13 +647,13 @@ export default function HomePage() {
                   icon: <Zap className="w-6 h-6" />,
                   title: "Fast setup",
                   desc: "Create an event and start selling in under 3 minutes.",
-                  color: "from-yellow-400 to-orange-500",
+                  color: "from-purple-600 to-blue-600",
                 },
                 {
                   icon: <Shield className="w-6 h-6" />,
                   title: "Secure",
                   desc: "QR-coded tickets with tamper-proof verification.",
-                  color: "from-green-400 to-emerald-600",
+                  color: "from-indigo-500 to-violet-600",
                 },
                 {
                   icon: <Star className="w-6 h-6" />,
@@ -667,7 +672,7 @@ export default function HomePage() {
                     {f.icon}
                   </div>
                   <h3 className="font-bold text-gray-900 mb-2">{f.title}</h3>
-                  <p className="text-sm text-gray-500">{f.desc}</p>
+                  <p className="text-sm text-gray-600">{f.desc}</p>
                 </div>
               ))}
             </div>
@@ -680,7 +685,7 @@ export default function HomePage() {
                 <div className="flex items-center gap-3">
                   <span className="text-xl">📧</span>
                   <div>
-                    <p className="text-xs text-gray-400">Email</p>
+                    <p className="text-xs text-gray-700 font-medium">Email</p>
                     <a
                       href="mailto:kisakalevi15@gmail.com"
                       className="text-sm font-semibold text-purple-600 hover:underline"
@@ -692,7 +697,7 @@ export default function HomePage() {
                 <div className="flex items-center gap-3">
                   <span className="text-xl">📱</span>
                   <div>
-                    <p className="text-xs text-gray-400">Phone</p>
+                    <p className="text-xs text-gray-700 font-medium">Phone</p>
                     <p className="text-sm font-semibold text-gray-900">
                       +254 746484946
                     </p>
@@ -701,7 +706,7 @@ export default function HomePage() {
                 <div className="flex items-center gap-3">
                   <span className="text-xl">📍</span>
                   <div>
-                    <p className="text-xs text-gray-400">Location</p>
+                    <p className="text-xs text-gray-700 font-medium">Location</p>
                     <p className="text-sm font-semibold text-gray-900">
                       Nairobi, Kenya
                     </p>
@@ -721,22 +726,50 @@ export default function HomePage() {
               </div>
               <span className="font-bold text-white">Eventra Ticketing</span>
             </div>
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-400 text-sm font-medium">
               {String(new Date().getFullYear())} Eventra. Built for Kenya.
             </p>
-            <div className="flex gap-4">
-              <Link
-                href="/auth/login"
-                className="text-gray-400 hover:text-white text-xs transition-colors"
-              >
-                Organizer login
-              </Link>
-              <Link
-                href="/ticket/lookup"
-                className="text-gray-400 hover:text-white text-xs transition-colors"
-              >
-                Find my ticket
-              </Link>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
+              <div className="flex gap-4 flex-wrap">
+                <Link
+                  href="/auth/login"
+                  className="text-gray-500 hover:text-white text-xs font-medium transition-colors"
+                >
+                  Organizer login
+                </Link>
+                <Link
+                  href="/ticket/lookup"
+                  className="text-gray-500 hover:text-white text-xs font-medium transition-colors"
+                >
+                  Find my ticket
+                </Link>
+              </div>
+              <div className="flex gap-3 flex-wrap">
+                <a
+                  href="https://www.facebook.com/profile.php?id=61577863482658"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-gray-500 hover:text-white text-xs font-medium transition-colors"
+                >
+                  Facebook
+                </a>
+                <a
+                  href="https://www.instagram.com/levikisaka?igsh=MXF0Y3R5aTluY2w5NQ=="
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-gray-500 hover:text-white text-xs font-medium transition-colors"
+                >
+                  Instagram
+                </a>
+                <a
+                  href="https://www.tiktok.com/@leviekisaka"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-gray-500 hover:text-white text-xs font-medium transition-colors"
+                >
+                  TikTok
+                </a>
+              </div>
             </div>
           </div>
         </footer>

@@ -14,7 +14,6 @@ import {
 import { useState } from "react";
 import toast from "react-hot-toast";
 import Link from "next/link";
-import Image from "next/image";
 
 interface TicketDetailProps {
   id: string;
@@ -85,14 +84,17 @@ export function EnhancedTicketCard({ ticket }: { ticket: TicketDetailProps }) {
       minimumFractionDigits: 0,
     }).format(n);
 
+  const qrSrc = ticket.qrCode || `/api/tickets/${ticket.id}/qrcode`;
+  const hasQr = Boolean(ticket.qrCode || ticket.qrCodeData);
+
   const handleDownload = async () => {
-    if (!ticket.qrCode) {
+    if (!hasQr) {
       toast.error("QR code not available");
       return;
     }
     try {
       const link = document.createElement("a");
-      link.href = ticket.qrCode;
+      link.href = qrSrc;
       link.download = `${ticket.ticketNumber}.png`;
       document.body.appendChild(link);
       link.click();
@@ -191,13 +193,13 @@ export function EnhancedTicketCard({ ticket }: { ticket: TicketDetailProps }) {
           </div>
 
           {/* QR Code Section */}
-          {ticket.qrCode && (
+          {hasQr && (
             <div className="mb-8 bg-white rounded-2xl p-6 flex flex-col items-center">
               <p className="text-gray-600 text-sm font-medium mb-4">
                 Scan to check in
               </p>
-              <Image
-                src={ticket.qrCode}
+              <img
+                src={qrSrc}
                 alt="QR Code"
                 width={200}
                 height={200}

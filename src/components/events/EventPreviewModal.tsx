@@ -58,9 +58,9 @@ export default function EventPreviewModal({ open, onClose, event }: { open: bool
 
         <div className="mt-4 grid gap-4 md:grid-cols-3">
           <div className="md:col-span-1">
-            {event.image ? (
+            {event.coverImage ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={event.image} alt={event.title} className="h-40 md:h-56 w-full object-cover rounded-lg" />
+              <img src={event.coverImage} alt={event.title} className="h-40 md:h-56 w-full object-cover rounded-lg" />
             ) : (
               <div className="h-40 md:h-56 bg-gradient-to-br from-purple-600 to-blue-500 rounded-lg flex items-center justify-center text-4xl">🎟️</div>
             )}

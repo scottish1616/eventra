@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
       const { data: events, error } = await supabase
         .from("events")
-        .select("*, ticket_types(*)")
+        .select("*, ticket_types(*), tickets(id), orders(id,total)")
         .eq("organizerId", user.id)
         .order("date", { ascending: true });
 
@@ -53,13 +53,19 @@ export async function GET(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        data: (events || []).map((e) => ({
-          ...e,
-          ticketTypes: e.ticket_types || [],
-          organizer: null,
-          _count: { tickets: 0, orders: 0 },
-          orders: [],
-        })),
+        data: (events || []).map((e) => {
+          const { tickets, ticket_types, orders, ...rest } = e as any;
+          return {
+            ...rest,
+            ticketTypes: ticket_types || [],
+            organizer: null,
+            _count: {
+              tickets: tickets?.length || 0,
+              orders: orders?.length || 0,
+            },
+            orders: orders || [],
+          };
+        }),
       });
     }
 
@@ -75,7 +81,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { data: events, error } = await query;
+    const { data: events, error } = await query.select(
+      "*, ticket_types(*), tickets(id), orders(id,total)"
+    );
 
     if (error) {
       return NextResponse.json(
@@ -86,13 +94,19 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: (events || []).map((e) => ({
-        ...e,
-        ticketTypes: e.ticket_types || [],
-        organizer: null,
-        _count: { tickets: 0, orders: 0 },
-        orders: [],
-      })),
+      data: (events || []).map((e) => {
+        const { tickets, ticket_types, orders, ...rest } = e as any;
+        return {
+          ...rest,
+          ticketTypes: ticket_types || [],
+          organizer: null,
+          _count: {
+            tickets: tickets?.length || 0,
+            orders: orders?.length || 0,
+          },
+          orders: orders || [],
+        };
+      }),
     });
   } catch (error) {
     console.error("[Events GET]", error);
@@ -142,16 +156,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
-    const {
-      title,
-      description,
-      date,
-      endDate,
-      location,
-      venue,
-      ticketTypes,
-    } = body;
+    const formData = await req.formData();
+    const title = formData.get("title") as string;
+    const description = formData.get("description") as string;
+    const date = formData.get("date") as string;
+    const endDate = formData.get("endDate") as string;
+    const location = formData.get("location") as string;
+    const venue = formData.get("venue") as string;
+    const coverImageFile = formData.get("coverImage") as File | null;
+    const ticketTypesJson = formData.get("ticketTypes") as string;
+    const ticketTypes = JSON.parse(ticketTypesJson || "[]");
 
     if (!title) {
       return NextResponse.json(
@@ -181,6 +195,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let coverImageUrl: string | null = null;
+
+    // Handle file upload if present
+    if (coverImageFile) {
+      try {
+        const arrayBuffer = await coverImageFile.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const fileName = `events/${Date.now()}-${coverImageFile.name}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from("event-images")
+          .upload(fileName, buffer, { contentType: coverImageFile.type, upsert: false });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicData } = supabase.storage
+          .from("event-images")
+          .getPublicUrl(fileName);
+
+        coverImageUrl = publicData?.publicUrl || null;
+      } catch (uploadErr) {
+        console.error("[Events POST] Upload error:", uploadErr);
+        return NextResponse.json(
+          { success: false, error: "Failed to upload image" },
+          { status: 500 }
+        );
+      }
+    }
+
     const slug =
       title
         .toLowerCase()
@@ -200,6 +243,7 @@ export async function POST(req: NextRequest) {
         endDate: endDate ? new Date(endDate).toISOString() : null,
         location,
         venue: venue || null,
+        coverImage: coverImageUrl || null,
         status: "PUBLISHED",
         slug,
         organizerId: user.id,

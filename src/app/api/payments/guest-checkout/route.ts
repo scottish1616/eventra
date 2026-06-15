@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { generateQRCode } from "@/lib/qrcode";
 import { initiateStkPush, formatPhone } from "@/lib/mpesa";
 
 function getSupabase() {
@@ -259,24 +260,21 @@ export async function POST(req: NextRequest) {
         const ticketId = crypto.randomUUID();
         const ticketNumber = generateTicketNumber(event.title);
         const qrPayload = generateQrPayload(ticketId, eventId);
+          const qrCode = await generateQRCode(qrPayload);
 
-        const { data: ticket } = await supabase
-          .from("tickets")
-          .insert({
-            id: ticketId,
-            ticketNumber,
-            userId,
-            eventId,
-            orderId: order.id,
-            ticketTypeId: tt.id,
-            attendeeName: buyerName,
-            attendeeEmail: guestEmail,
-            qrCode: "",
-            qrCodeData: qrPayload,
-          })
-          .select("id")
-          .single();
-
+          const { data: ticket } = await supabase
+            .from("tickets")
+            .insert({
+              id: ticketId,
+              ticketNumber,
+              userId,
+              eventId,
+              orderId: order.id,
+              ticketTypeId: tt.id,
+              attendeeName: buyerName,
+              attendeeEmail: guestEmail,
+              qrCode,
+            });
         if (ticket) ticketIds.push(ticket.id);
       }
 

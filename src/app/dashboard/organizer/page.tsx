@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Toaster } from "react-hot-toast";
+import { Toaster, toast } from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { Topbar } from "@/components/shared/Topbar";
@@ -18,8 +18,10 @@ import {
   BarChart3,
   Settings,
   ArrowUpRight,
+  Pencil,
 } from "lucide-react";
 import Link from "next/link";
+import supabaseClient from "@/lib/supabaseClient";
 import { lazy, Suspense } from "react";
 
 const ResponsiveContainer = lazy(() =>
@@ -124,13 +126,15 @@ export default function OrganizerDashboard() {
       return;
     }
     if (status === "authenticated") {
-      Promise.all([
-        fetch("/api/events?mine=true").then((r) => r.json()),
-        fetch("/api/analytics").then((r) => r.json()),
-        fetch("/api/settings").then((r) => r.json()),
-        fetch("/api/profile").then((r) => r.json()),
-      ])
-        .then(([eventsRes, analyticsRes, settingsRes, profileRes]) => {
+      const fetchAll = async () => {
+        try {
+          const [eventsRes, analyticsRes, settingsRes, profileRes] = await Promise.all([
+            fetch("/api/events?mine=true").then((r) => r.json()),
+            fetch("/api/analytics").then((r) => r.json()),
+            fetch("/api/settings").then((r) => r.json()),
+            fetch("/api/profile").then((r) => r.json()),
+          ]);
+
           setEvents(eventsRes.data || []);
           if (analyticsRes.success) {
             setAnalyticsData(analyticsRes.data);
@@ -142,10 +146,54 @@ export default function OrganizerDashboard() {
             setProfileData(profileRes.data);
           }
           setLoading(false);
-        })
-        .catch(() => setLoading(false));
+        } catch (err) {
+          setLoading(false);
+        }
+      };
+
+      fetchAll();
     }
   }, [status, router]);
+
+  // Supabase realtime subscription to reflect event changes
+  useEffect(() => {
+    if (!profileData?.id) return;
+
+    const subscription = supabaseClient
+      .from("events")
+      .on("INSERT", (payload) => {
+        if (payload.new.organizerId === profileData.id) {
+          setEvents((prev) => [payload.new, ...prev]);
+        }
+      })
+      .on("UPDATE", (payload) => {
+        if (payload.new.organizerId === profileData.id) {
+          setEvents((prev) => prev.map((e) => (e.id === payload.new.id ? payload.new : e)));
+        }
+      })
+      .on("DELETE", (payload) => {
+        if (payload.old.organizerId === profileData.id) {
+          setEvents((prev) => prev.filter((e) => e.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      try {
+        supabaseClient.removeSubscription?.(subscription as any);
+      } catch {
+        // best-effort cleanup
+      }
+    };
+  }, [profileData?.id]);
+
+  const refetchEvents = async () => {
+    try {
+      const res = await fetch("/api/events?mine=true");
+      const json = await res.json();
+      setEvents(json.data || []);
+    } catch {}
+  };
 
   const totalRevenue =
     analyticsData?.currentStats?.totalRevenue ||
@@ -487,12 +535,22 @@ export default function OrganizerDashboard() {
                                   {formatCurrency(revenue)}
                                 </p>
                               </div>
-                              <Link
-                                href={`/event/${event.slug}/buy`}
-                                className="text-gray-600 hover:text-purple-400 transition-colors"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Link>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <Link
+                                  href={`/event/${event.slug}/buy`}
+                                  className="text-gray-600 hover:text-blue-400 transition-colors"
+                                  title="View event"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Link>
+                                <Link
+                                  href={`/dashboard/organizer/events/${event.id}/edit`}
+                                  className="text-gray-600 hover:text-purple-400 transition-colors"
+                                  title="Edit event"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Link>
+                              </div>
                             </motion.div>
                           );
                         })}
@@ -564,7 +622,7 @@ export default function OrganizerDashboard() {
                                   "Status",
                                   "Tickets",
                                   "Revenue",
-                                  "",
+                                  "Actions",
                                 ].map((h) => (
                                   <th
                                     key={h}
@@ -617,12 +675,85 @@ export default function OrganizerDashboard() {
                                       {formatCurrency(revenue)}
                                     </td>
                                     <td className="px-4 py-3">
-                                      <Link
-                                        href={`/event/${event.slug}/buy`}
-                                        className="text-gray-600 hover:text-purple-400 transition-colors"
-                                      >
-                                        <Eye className="w-4 h-4" />
-                                      </Link>
+                                      <div className="flex items-center gap-2">
+                                        <Link
+                                          href={`/event/${event.slug}/buy`}
+                                          className="text-gray-600 hover:text-blue-400 transition-colors"
+                                          title="View event"
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                        </Link>
+                                        <Link
+                                          href={`/dashboard/organizer/events/${event.id}/edit`}
+                                          className="text-gray-600 hover:text-purple-400 transition-colors"
+                                          title="Edit event"
+                                        >
+                                          <Pencil className="w-4 h-4" />
+                                        </Link>
+                                        <button
+                                          onClick={async () => {
+                                            // Pause -> set to DRAFT
+                                            try {
+                                              const r = await fetch(`/api/events/${encodeURIComponent(event.id)}`, {
+                                                method: "PATCH",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ status: "DRAFT" }),
+                                              });
+                                              const j = await r.json();
+                                              if (!r.ok || !j.success) throw new Error(j.error || r.statusText);
+                                              toast.success("Event paused");
+                                              await refetchEvents();
+                                            } catch (err: any) {
+                                              toast.error(err?.message || "Failed to pause event");
+                                            }
+                                          }}
+                                          title="Pause event"
+                                          className="text-gray-600 hover:text-yellow-400 transition-colors"
+                                        >
+                                          ⏸
+                                        </button>
+                                        <button
+                                          onClick={async () => {
+                                            // Cancel -> set to CANCELLED
+                                            if (!confirm("Cancel this event? This cannot be undone.")) return;
+                                            try {
+                                              const r = await fetch(`/api/events/${encodeURIComponent(event.id)}`, {
+                                                method: "PATCH",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ status: "CANCELLED" }),
+                                              });
+                                              const j = await r.json();
+                                              if (!r.ok || !j.success) throw new Error(j.error || r.statusText);
+                                              toast.success("Event cancelled");
+                                              await refetchEvents();
+                                            } catch (err: any) {
+                                              toast.error(err?.message || "Failed to cancel event");
+                                            }
+                                          }}
+                                          title="Cancel event"
+                                          className="text-gray-600 hover:text-red-400 transition-colors"
+                                        >
+                                          ✖
+                                        </button>
+                                        <button
+                                          onClick={async () => {
+                                            if (!confirm("Delete this event permanently?")) return;
+                                            try {
+                                              const r = await fetch(`/api/events/${encodeURIComponent(event.id)}`, { method: "DELETE" });
+                                              const j = await r.json();
+                                              if (!r.ok || !j.success) throw new Error(j.error || r.statusText);
+                                              toast.success("Event deleted");
+                                              await refetchEvents();
+                                            } catch (err: any) {
+                                              toast.error(err?.message || "Failed to delete event");
+                                            }
+                                          }}
+                                          title="Delete event"
+                                          className="text-gray-600 hover:text-red-600 transition-colors"
+                                        >
+                                          🗑
+                                        </button>
+                                      </div>
                                     </td>
                                   </motion.tr>
                                 );
