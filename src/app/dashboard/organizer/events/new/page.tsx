@@ -87,7 +87,12 @@ export default function NewEventPage() {
     e.preventDefault();
     setError("");
 
-    if (ticketTypes.length === 0) {
+if (!form.coverImageFile) {
+        setError("Please upload a cover image before creating the event.");
+        return;
+      }
+
+      if (ticketTypes.length === 0) {
       setError("Add at least one ticket type");
       return;
     }

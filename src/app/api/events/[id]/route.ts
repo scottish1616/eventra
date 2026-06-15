@@ -9,6 +9,61 @@ function getSupabase() {
   );
 }
 
+const storageBucket = process.env.SUPABASE_STORAGE_BUCKET ?? "event-images";
+
+async function uploadCoverImage(supabase: ReturnType<typeof getSupabase>, coverImageFile: File) {
+  const safeFileName = coverImageFile.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+  const fileName = `events/${Date.now()}-${safeFileName}`;
+  const arrayBuffer = await coverImageFile.arrayBuffer();
+
+  const ensureBucketExists = async () => {
+    try {
+      const { error: bucketError } = await supabase.storage.createBucket(storageBucket, {
+        public: true,
+      });
+
+      if (bucketError) {
+        const errorMsg = String(bucketError?.message || bucketError || "").toLowerCase();
+        if (!errorMsg.includes("bucket already exists") && !errorMsg.includes("already exists")) {
+          console.error("[uploadCoverImage] Bucket creation error:", bucketError);
+          throw bucketError;
+        }
+      }
+    } catch (e: any) {
+      const errorMsg = String(e?.message || e || "").toLowerCase();
+      if (!errorMsg.includes("bucket already exists") && !errorMsg.includes("already exists")) {
+        throw e;
+      }
+    }
+  };
+
+  await ensureBucketExists();
+
+  const { error: uploadError } = await supabase.storage.from(storageBucket).upload(
+    fileName,
+    arrayBuffer,
+    {
+      contentType: coverImageFile.type,
+      upsert: false,
+    },
+  );
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  const publicUrlResult = supabase.storage
+    .from(storageBucket)
+    .getPublicUrl(fileName);
+  const publicData = publicUrlResult.data;
+
+  if (!publicData?.publicUrl) {
+    throw new Error("Failed to get public URL");
+  }
+
+  return publicData.publicUrl;
+}
+
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -154,20 +209,23 @@ export async function PUT(
     if (coverImageFile) {
       try {
         const arrayBuffer = await coverImageFile.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const fileName = `events/${Date.now()}-${coverImageFile.name}`;
-        
+        const safeFileName = coverImageFile.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+        const fileName = `events/${Date.now()}-${safeFileName}`;
+
         const { error: uploadError } = await supabase.storage
           .from("event-images")
-          .upload(fileName, buffer, { contentType: coverImageFile.type, upsert: false });
+          .upload(fileName, arrayBuffer, {
+            contentType: coverImageFile.type,
+            upsert: false,
+          });
 
         if (uploadError) throw uploadError;
 
-        const { data: publicData } = supabase.storage
+        const publicUrlResult = supabase.storage
           .from("event-images")
           .getPublicUrl(fileName);
 
-        coverImageUrl = publicData?.publicUrl || null;
+        coverImageUrl = publicUrlResult.data?.publicUrl || null;
       } catch (uploadErr) {
         console.error("[Events PUT] Upload error:", uploadErr);
         return NextResponse.json(
@@ -384,8 +442,9 @@ export async function DELETE(
 
     const { error: delErr } = await supabase.from("events").delete().eq("id", eventId);
     if (delErr) {
-      console.error("[Events DELETE] delete error:", delErr);
-      return NextResponse.json({ success: false, error: "Failed to delete event" }, { status: 500 });
+      const delErrMsg = delErr?.message || JSON.stringify(delErr) || "Unknown error";
+      console.error("[Events DELETE] delete error:", delErrMsg);
+      return NextResponse.json({ success: false, error: "Failed to delete event: " + delErrMsg }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

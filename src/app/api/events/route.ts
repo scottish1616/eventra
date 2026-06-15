@@ -9,6 +9,61 @@ function getSupabase() {
   );
 }
 
+const storageBucket = process.env.SUPABASE_STORAGE_BUCKET ?? "event-images";
+
+async function uploadCoverImage(supabase: ReturnType<typeof getSupabase>, coverImageFile: File) {
+  const safeFileName = coverImageFile.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+  const fileName = `events/${Date.now()}-${safeFileName}`;
+  const arrayBuffer = await coverImageFile.arrayBuffer();
+
+  const ensureBucketExists = async () => {
+    try {
+      const { error: bucketError } = await supabase.storage.createBucket(storageBucket, {
+        public: true,
+      });
+
+      if (bucketError) {
+        const errorMsg = String(bucketError?.message || bucketError || "").toLowerCase();
+        if (!errorMsg.includes("bucket already exists") && !errorMsg.includes("already exists")) {
+          console.error("[uploadCoverImage] Bucket creation error:", bucketError);
+          throw bucketError;
+        }
+      }
+    } catch (e: any) {
+      const errorMsg = String(e?.message || e || "").toLowerCase();
+      if (!errorMsg.includes("bucket already exists") && !errorMsg.includes("already exists")) {
+        throw e;
+      }
+    }
+  };
+
+  await ensureBucketExists();
+
+  const { error: uploadError } = await supabase.storage.from(storageBucket).upload(
+    fileName,
+    arrayBuffer,
+    {
+      contentType: coverImageFile.type,
+      upsert: false,
+    },
+  );
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  const publicUrlResult = supabase.storage
+    .from(storageBucket)
+    .getPublicUrl(fileName);
+  const publicData = publicUrlResult.data;
+
+  if (!publicData?.publicUrl) {
+    throw new Error("Failed to get public URL");
+  }
+
+  return publicData.publicUrl;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -200,21 +255,7 @@ export async function POST(req: NextRequest) {
     // Handle file upload if present
     if (coverImageFile) {
       try {
-        const arrayBuffer = await coverImageFile.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const fileName = `events/${Date.now()}-${coverImageFile.name}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from("event-images")
-          .upload(fileName, buffer, { contentType: coverImageFile.type, upsert: false });
-
-        if (uploadError) throw uploadError;
-
-        const { data: publicData } = supabase.storage
-          .from("event-images")
-          .getPublicUrl(fileName);
-
-        coverImageUrl = publicData?.publicUrl || null;
+        coverImageUrl = await uploadCoverImage(supabase, coverImageFile);
       } catch (uploadErr) {
         console.error("[Events POST] Upload error:", uploadErr);
         return NextResponse.json(

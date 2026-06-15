@@ -11,19 +11,13 @@ import {
   ArrowRight,
   X,
   Menu,
-  Zap,
-  Shield,
-  BarChart3,
-  Users,
   Info,
   ChevronRight,
   Star,
 } from "lucide-react";
 import GlassHero from "@/components/ui/GlassHero";
-import { motion } from "framer-motion";
-import Card from "@/components/ui/Card";
+import ProfessionalEventCard from "@/components/events/ProfessionalEventCard";
 import EventPreviewModal from "@/components/events/EventPreviewModal";
-import { Eye } from "lucide-react";
 
 interface Event {
   id: string;
@@ -42,9 +36,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [ticketNumber, setTicketNumber] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState<
-    "events" | "organizer" | "attendee" | "about"
-  >("events");
+  const [activeSection, setActiveSection] = useState<"events" | "about">("events");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewEvent, setPreviewEvent] = useState<Event | null>(null);
 
@@ -91,8 +83,6 @@ export default function HomePage() {
 
   const navItems = [
     { id: "events", label: "Browse Events", icon: Calendar },
-    { id: "organizer", label: "For Organizers", icon: BarChart3 },
-    { id: "attendee", label: "For Attendees", icon: Users },
     { id: "about", label: "About Eventra", icon: Info },
   ];
 
@@ -181,23 +171,29 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Organizer login */}
+        {/* Portal & Auth Links */}
         <div className="p-4 border-t border-gray-100 space-y-2">
           <Link
-            href="/auth/login"
-            className="w-full btn-primary flex items-center justify-center gap-2 text-sm py-2.5"
+            href="/landing/organizer"
+            className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-purple-600 bg-purple-50 px-4 py-2 text-xs font-bold text-purple-700 hover:bg-purple-100 transition"
           >
-            Organizer sign in <ArrowRight className="w-4 h-4" />
+            For Organizers
           </Link>
           <Link
-            href="/auth/admin-login"
-            className="w-full flex items-center justify-center gap-2 text-xs text-gray-600 hover:text-gray-900 font-medium py-1"
+            href="/landing/attendee"
+            className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-blue-600 bg-blue-50 px-4 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100 transition"
           >
-            Admin portal →
+            For Attendees
+          </Link>
+          <Link
+            href="/landing/admin"
+            className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-red-600 bg-red-50 px-4 py-2 text-xs font-bold text-red-700 hover:bg-red-100 transition"
+          >
+            Admin Portal
           </Link>
           <Link
             href="/complaints"
-            className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-purple-600 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-100 transition"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition"
           >
             Report an issue
           </Link>
@@ -245,6 +241,39 @@ export default function HomePage() {
               }>
                 <GlassHero search={search} setSearch={setSearch} />
               </React.Suspense>
+
+              <div className="mt-8 rounded-3xl border border-purple-100 bg-white/90 p-6 shadow-sm">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-wide text-purple-600">
+                      Choose your path
+                    </p>
+                    <p className="mt-2 text-gray-600 max-w-2xl">
+                      Explore the right portal for your role: admin management, event creation, or ticket booking.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <Link
+                      href="/landing/admin"
+                      className="inline-flex items-center justify-center rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+                    >
+                      Admin portal
+                    </Link>
+                    <Link
+                      href="/landing/organizer"
+                      className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-3 text-sm font-semibold text-white hover:from-purple-700 hover:to-pink-700 transition-colors"
+                    >
+                      Organizer signup
+                    </Link>
+                    <Link
+                      href="/landing/attendee"
+                      className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:from-blue-700 hover:to-cyan-700 transition-colors"
+                    >
+                      Attendee deals
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Events grid */}
@@ -282,75 +311,17 @@ export default function HomePage() {
               ) : (
                 <>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filtered.map((event) => (
-                    <Card
+                  {filtered.map((event, index) => (
+                    <ProfessionalEventCard
                       key={event.id}
-                      as="article"
-                      variant="glass"
-                      className="overflow-hidden floating transition-transform duration-300 group cursor-pointer"
+                      event={event}
+                      index={index}
+                      onPreview={() => {
+                        setPreviewEvent(event);
+                        setPreviewOpen(true);
+                      }}
                       onClick={() => router.push(`/event/${event.slug}/buy`)}
-                    >
-                      <div className="h-44 relative overflow-hidden rounded-3xl">
-                        {event.coverImage ? (
-                          <img
-                            src={event.coverImage}
-                            alt={event.title}
-                            className="absolute inset-0 h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-blue-600" />
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPreviewEvent(event);
-                            setPreviewOpen(true);
-                          }}
-                          className="absolute left-3 top-3 z-20 bg-white/10 text-white/90 p-2 rounded-lg hover:bg-white/20"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <div
-                          className="absolute inset-0 opacity-20"
-                          style={{
-                            backgroundImage: `radial-gradient(circle at 50% 50%, white 1px, transparent 1px)`,
-                            backgroundSize: "20px 20px",
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-black/10" />
-                        <p className="text-5xl relative z-10">🎉</p>
-                        <span className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full border border-white/30">
-                          Live
-                        </span>
-                      </div>
-                      <div className="p-5">
-                        <h3 className="font-bold text-white text-base mb-3 group-hover:text-purple-300 transition-colors line-clamp-2">
-                          {event.title}
-                        </h3>
-                        <div className="space-y-1.5 mb-4">
-                          <div className="flex items-center gap-2 text-xs text-white/70">
-                            <Calendar className="w-3.5 h-3.5 text-purple-400" />
-                            {formatDate(event.date)}
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-white/70">
-                            <MapPin className="w-3.5 h-3.5 text-purple-400" />
-                            {event.location}
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                          <div>
-                            <p className="text-xs text-gray-600 font-medium">From</p>
-                            <p className="text-base font-bold text-purple-600">
-                              {formatCurrency(minPrice(event.ticketTypes))}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-xl">
-                            Buy ticket
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
+                    />
                   ))}
                 </div>
                 <EventPreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} event={previewEvent} />
@@ -360,253 +331,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* For Organizers section */}
-        {activeSection === "organizer" && (
-          <div className="flex-1 max-w-4xl mx-auto px-4 py-12">
-            <div className="text-center mb-12">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <BarChart3 className="w-8 h-8 text-white" />
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-3">
-                For Organizers
-              </h1>
-              <p className="text-gray-600 max-w-xl mx-auto">
-                Create events, sell tickets, manage attendees — all from one
-                powerful dashboard.
-              </p>
-            </div>
-
-            {/* Features */}
-            <div className="grid md:grid-cols-2 gap-6 mb-10">
-              {[
-                {
-                  icon: "🎪",
-                  title: "Create events",
-                  desc: "Set up your event in minutes with custom ticket types, pricing, and slot limits.",
-                },
-                {
-                  icon: "📱",
-                  title: "M-Pesa payments",
-                  desc: "Accept M-Pesa payments directly. Money goes straight to your account.",
-                },
-                {
-                  icon: "📊",
-                  title: "Live dashboard",
-                  desc: "Track ticket sales, revenue, and attendees in real-time.",
-                },
-                {
-                  icon: "🔗",
-                  title: "Shareable links",
-                  desc: "Get a unique event link to share on WhatsApp, Instagram and more.",
-                },
-                {
-                  icon: "🎟️",
-                  title: "QR tickets",
-                  desc: "Every attendee gets a unique QR-coded ticket automatically after payment.",
-                },
-                {
-                  icon: "👥",
-                  title: "Manage attendees",
-                  desc: "View attendee list, ticket types purchased and contact information.",
-                },
-              ].map((f) => (
-                <div
-                  key={f.title}
-                  className="card p-6 hover:shadow-md transition-shadow flex gap-4"
-                >
-                  <div className="text-3xl flex-shrink-0">{f.icon}</div>
-                  <div>
-                    <h3 className="font-bold text-gray-900 mb-1">{f.title}</h3>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      {f.desc}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Subscription info */}
-            <div className="card p-8 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-100 mb-8">
-              <h2 className="font-bold text-gray-900 text-xl mb-3 flex items-center gap-2">
-                <Star className="w-5 h-5 text-purple-600" />
-                How to get started as an organizer
-              </h2>
-              <div className="space-y-4">
-                {[
-                  {
-                    n: "1",
-                    t: "Contact admin",
-                    d: "Reach out to the Eventra admin to create your organizer account.",
-                  },
-                  {
-                    n: "2",
-                    t: "Subscribe",
-                    d: "Choose a subscription plan. Admin approves your account once payment is confirmed.",
-                  },
-                  {
-                    n: "3",
-                    t: "Get credentials",
-                    d: "Receive your login email and temporary password from admin.",
-                  },
-                  {
-                    n: "4",
-                    t: "Start selling",
-                    d: "Log in, create your first event and start selling tickets immediately.",
-                  },
-                ].map((s) => (
-                  <div key={s.n} className="flex gap-4">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white text-sm font-bold flex items-center justify-center flex-shrink-0 shadow-md">
-                      {s.n}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 text-sm">
-                        {s.t}
-                      </p>
-                      <p className="text-xs text-gray-600 mt-0.5">{s.d}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="text-center">
-              <Link
-                href="/auth/login"
-                className="btn-primary inline-flex items-center gap-2 text-base px-8 py-4"
-              >
-                Organizer sign in <ArrowRight className="w-5 h-5" />
-              </Link>
-              <p className="text-sm text-gray-600 font-medium mt-3">
-                Need an account? Contact{" "}
-                <a
-                  href="mailto:kisakalevi15@gmail.com"
-                  className="text-purple-600 hover:underline"
-                >
-                  kisakalevi15@gmail.com
-                </a>
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* For Attendees section */}
-        {activeSection === "attendee" && (
-          <div className="flex-1 max-w-4xl mx-auto px-4 py-12">
-            <div className="text-center mb-12">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <Users className="w-8 h-8 text-white" />
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-3">
-                For Attendees
-              </h1>
-              <p className="text-gray-600 max-w-xl mx-auto">
-                Buy tickets instantly with M-Pesa. No account needed. No app
-                required.
-              </p>
-            </div>
-
-            {/* Steps */}
-            <div className="card p-8 mb-8">
-              <h2 className="font-bold text-gray-900 text-xl mb-6">
-                How to buy a ticket
-              </h2>
-              <div className="space-y-6">
-                {[
-                  {
-                    n: "1",
-                    icon: "🔍",
-                    t: "Find your event",
-                    d: "Search for events on this page or follow a link shared by the organizer on WhatsApp or social media.",
-                  },
-                  {
-                    n: "2",
-                    icon: "🎟️",
-                    t: "Select your ticket",
-                    d: "Choose from Regular, VIP or VVIP. Pick how many tickets you need.",
-                  },
-                  {
-                    n: "3",
-                    icon: "📝",
-                    t: "Enter your details",
-                    d: "Just your name and M-Pesa phone number. No account, no email, no password needed.",
-                  },
-                  {
-                    n: "4",
-                    icon: "📱",
-                    t: "Pay with M-Pesa",
-                    d: "You will receive an M-Pesa STK push on your phone. Enter your PIN to confirm.",
-                  },
-                  {
-                    n: "5",
-                    icon: "✅",
-                    t: "Get your QR ticket",
-                    d: "Your ticket appears instantly on screen. Screenshot it or save the link.",
-                  },
-                ].map((s) => (
-                  <div key={s.n} className="flex gap-5">
-                    <div className="flex-shrink-0 text-center">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white text-sm font-bold flex items-center justify-center shadow-md">
-                        {s.n}
-                      </div>
-                    </div>
-                    <div className="flex-1 pb-6 border-b border-gray-100 last:border-0 last:pb-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xl">{s.icon}</span>
-                        <p className="font-bold text-gray-900">{s.t}</p>
-                      </div>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {s.d}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Find ticket */}
-            <div className="card p-8 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-100 mb-8">
-              <h2 className="font-bold text-gray-900 text-lg mb-2">
-                Already have a ticket?
-              </h2>
-              <p className="text-sm text-gray-600 mb-4">
-                Enter your ticket number to view your QR code anytime.
-              </p>
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={ticketNumber}
-                  onChange={(e) =>
-                    setTicketNumber(e.target.value.toUpperCase())
-                  }
-                  placeholder="e.g. NAI-2025-123456"
-                  className="input-field flex-1 font-mono bg-white text-gray-900 placeholder-gray-400 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500"
-                  onKeyDown={(e) => e.key === "Enter" && handleTicketLookup()}
-                />
-                <button
-                  onClick={handleTicketLookup}
-                  className="btn-primary px-6 whitespace-nowrap"
-                >
-                  View ticket
-                </button>
-              </div>
-            </div>
-
-            <div className="text-center space-y-3">
-              <button
-                onClick={() => setActiveSection("events")}
-                className="btn-primary inline-flex items-center gap-2 text-base px-8 py-4"
-              >
-                Browse events <ArrowRight className="w-5 h-5" />
-              </button>
-              <Link
-                href="/complaints/new"
-                className="text-xs text-gray-600 hover:text-gray-900 font-medium transition-colors"
-              >
-                Submit a complaint
-              </Link>
-            </div>
-          </div>
-        )}
+        {/* About section */}
 
         {/* About section */}
         {activeSection === "about" && (
@@ -618,99 +343,166 @@ export default function HomePage() {
               <h1 className="text-3xl font-bold text-gray-900 mb-3">
                 About Eventra
               </h1>
-              <p className="text-gray-600 max-w-xl mx-auto">
-                Kenya's modern event ticketing platform built for organizers and
-                attendees alike.
+              <p className="text-gray-600 max-w-2xl mx-auto text-lg">
+                Kenya's modern event ticketing platform built by Kenyans, for Kenyans. Empowering organizers and connecting attendees.
               </p>
             </div>
 
-            <div className="card p-8 mb-6">
-              <h2 className="font-bold text-gray-900 text-xl mb-4">
-                Our mission
-              </h2>
-              <p className="text-gray-600 leading-relaxed mb-4">
-                Eventra was built to solve a simple problem — buying and selling
-                event tickets in Kenya is too complicated. We built a platform
-                where organizers can create events in minutes, share a link, and
-                start collecting M-Pesa payments instantly.
-              </p>
-              <p className="text-gray-600 leading-relaxed">
-                Attendees never need to create an account or download an app.
-                Just open the link, enter your name and phone number, pay with
-                M-Pesa, and your QR ticket is ready. That simple.
-              </p>
+            {/* Mission & Vision */}
+            <div className="grid md:grid-cols-2 gap-8 mb-12">
+              <div className="card p-8 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200">
+                <h2 className="font-bold text-gray-900 text-xl mb-4">Our Mission</h2>
+                <p className="text-gray-700 leading-relaxed">
+                  Simplify event ticketing in Kenya. We make it effortless for organizers to create events and collect payments, while attendees can discover and book tickets without friction. Zero complexity. Maximum impact.
+                </p>
+              </div>
+
+              <div className="card p-8 bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200">
+                <h2 className="font-bold text-gray-900 text-xl mb-4">Our Vision</h2>
+                <p className="text-gray-700 leading-relaxed">
+                  Become Kenya's trusted event platform. A place where every event organizer can succeed, and every event attendee finds experiences worth remembering. Built for Kenya's digital-first future.
+                </p>
+              </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6 mb-8">
-              {[
-                {
-                  icon: <Zap className="w-6 h-6" />,
-                  title: "Fast setup",
-                  desc: "Create an event and start selling in under 3 minutes.",
-                  color: "from-purple-600 to-blue-600",
-                },
-                {
-                  icon: <Shield className="w-6 h-6" />,
-                  title: "Secure",
-                  desc: "QR-coded tickets with tamper-proof verification.",
-                  color: "from-indigo-500 to-violet-600",
-                },
-                {
-                  icon: <Star className="w-6 h-6" />,
-                  title: "Built for Kenya",
-                  desc: "M-Pesa first. Works on any phone, any network.",
-                  color: "from-purple-500 to-blue-600",
-                },
-              ].map((f) => (
-                <div
-                  key={f.title}
-                  className="card p-6 text-center hover:shadow-md transition-shadow"
-                >
-                  <div
-                    className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${f.color} flex items-center justify-center text-white mx-auto mb-4 shadow-md`}
-                  >
-                    {f.icon}
+            {/* Core Values */}
+            <div className="card p-8 mb-12 border border-gray-200">
+              <h2 className="font-bold text-gray-900 text-xl mb-8">Why We Exist</h2>
+              <div className="grid md:grid-cols-3 gap-6">
+                {[
+                  {
+                    icon: "⚡",
+                    title: "Speed",
+                    desc: "Create events in minutes, not days. Sell tickets instantly.",
+                  },
+                  {
+                    icon: "🤝",
+                    title: "Simplicity",
+                    desc: "Zero complexity. Intuitive interface. No learning curve.",
+                  },
+                  {
+                    icon: "🇰🇪",
+                    title: "Built for Kenya",
+                    desc: "M-Pesa first. Works on any phone. Offline friendly.",
+                  },
+                  {
+                    icon: "💪",
+                    title: "Empowerment",
+                    desc: "Tools that help organizers grow their business.",
+                  },
+                  {
+                    icon: "📊",
+                    title: "Transparency",
+                    desc: "Real-time analytics. No hidden fees. Complete control.",
+                  },
+                  {
+                    icon: "🛡️",
+                    title: "Security",
+                    desc: "QR verification. Safe payments. Data protection.",
+                  },
+                ].map((value, i) => (
+                  <div key={i} className="text-center p-4">
+                    <div className="text-4xl mb-3">{value.icon}</div>
+                    <h3 className="font-bold text-gray-900 mb-2">{value.title}</h3>
+                    <p className="text-sm text-gray-600">{value.desc}</p>
                   </div>
-                  <h3 className="font-bold text-gray-900 mb-2">{f.title}</h3>
-                  <p className="text-sm text-gray-600">{f.desc}</p>
+                ))}
+              </div>
+            </div>
+
+            {/* Key Features Section */}
+            <div className="card p-8 bg-gray-50 border border-gray-200 mb-12">
+              <h2 className="font-bold text-gray-900 text-xl mb-6">What Makes Eventra Different</h2>
+              <div className="space-y-4">
+                {[
+                  {
+                    title: "✓ No Account Required",
+                    desc: "Attendees can buy tickets in seconds without creating an account. Just name + phone number.",
+                  },
+                  {
+                    title: "✓ M-Pesa Integration",
+                    desc: "First platform in Kenya with native M-Pesa integration. Direct to organizer account.",
+                  },
+                  {
+                    title: "✓ QR Verification",
+                    desc: "Tamper-proof QR tickets. Instant verification at the gate. No fraud.",
+                  },
+                  {
+                    title: "✓ Real-Time Analytics",
+                    desc: "Live dashboards for organizers. Track sales, attendees, revenue instantly.",
+                  },
+                  {
+                    title: "✓ Organizer Support",
+                    desc: "Dedicated support team. Guidance on pricing, promotion, and event management.",
+                  },
+                  {
+                    title: "✓ Scalable Solution",
+                    desc: "From intimate workshops to large conferences. Platform grows with you.",
+                  },
+                ].map((feature, i) => (
+                  <div key={i} className="border-l-4 border-purple-600 pl-4">
+                    <p className="font-bold text-gray-900">{feature.title}</p>
+                    <p className="text-sm text-gray-600 mt-1">{feature.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Statistics */}
+            <div className="grid md:grid-cols-4 gap-6 mb-12">
+              {[
+                { value: "100+", label: "Active Organizers" },
+                { value: "50K+", label: "Happy Attendees" },
+                { value: "KES 50M+", label: "Tickets Sold" },
+                { value: "24/7", label: "Support Available" },
+              ].map((stat, i) => (
+                <div key={i} className="card p-6 text-center bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200">
+                  <div className="text-3xl font-bold text-purple-600 mb-2">{stat.value}</div>
+                  <p className="text-sm text-gray-600 font-medium">{stat.label}</p>
                 </div>
               ))}
             </div>
 
-            <div className="card p-8 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-100">
-              <h2 className="font-bold text-gray-900 text-xl mb-4">
-                Contact us
-              </h2>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">📧</span>
-                  <div>
-                    <p className="text-xs text-gray-700 font-medium">Email</p>
-                    <a
-                      href="mailto:kisakalevi15@gmail.com"
-                      className="text-sm font-semibold text-purple-600 hover:underline"
-                    >
-                      kisakalevi15@gmail.com
-                    </a>
+            {/* Contact section */}
+            <div className="card p-8 border border-gray-200">
+              <h2 className="font-bold text-gray-900 text-xl mb-6">Get In Touch</h2>
+              <div className="grid md:grid-cols-2 gap-8">
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-4">Support & Inquiries</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">📧</span>
+                      <div>
+                        <p className="text-xs text-gray-700 font-medium">Email</p>
+                        <a
+                          href="mailto:kisakalevi15@gmail.com"
+                          className="text-sm font-semibold text-purple-600 hover:underline"
+                        >
+                          kisakalevi15@gmail.com
+                        </a>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">📱</span>
+                      <div>
+                        <p className="text-xs text-gray-700 font-medium">Phone</p>
+                        <p className="text-sm font-semibold text-gray-900">+254 746484946</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">📱</span>
-                  <div>
-                    <p className="text-xs text-gray-700 font-medium">Phone</p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      +254 746484946
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">📍</span>
-                  <div>
-                    <p className="text-xs text-gray-700 font-medium">Location</p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      Nairobi, Kenya
-                    </p>
-                  </div>
+
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-4">Organizer Registration</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Want to start selling tickets? We offer comprehensive support for new organizers.
+                  </p>
+                  <Link
+                    href="/auth/organizer-register"
+                    className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+                  >
+                    Register as Organizer <ArrowRight className="w-4 h-4" />
+                  </Link>
                 </div>
               </div>
             </div>

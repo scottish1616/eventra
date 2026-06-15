@@ -159,31 +159,30 @@ export default function OrganizerDashboard() {
   useEffect(() => {
     if (!profileData?.id) return;
 
-    const subscription = supabaseClient
-      .from("events")
-      .on("INSERT", (payload) => {
-        if (payload.new.organizerId === profileData.id) {
-          setEvents((prev) => [payload.new, ...prev]);
-        }
-      })
-      .on("UPDATE", (payload) => {
-        if (payload.new.organizerId === profileData.id) {
-          setEvents((prev) => prev.map((e) => (e.id === payload.new.id ? payload.new : e)));
-        }
-      })
-      .on("DELETE", (payload) => {
-        if (payload.old.organizerId === profileData.id) {
-          setEvents((prev) => prev.filter((e) => e.id !== payload.old.id));
-        }
-      })
+    const channel = supabaseClient
+      .channel("events_channel")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "events" },
+        (payload) => {
+          const record = (payload.new || payload.old) as any;
+          if (!record || record.organizerId !== profileData.id) return;
+
+          if (payload.eventType === "INSERT") {
+            setEvents((prev) => [record, ...prev]);
+          } else if (payload.eventType === "UPDATE") {
+            setEvents((prev) =>
+              prev.map((e) => (e.id === record.id ? record : e)),
+            );
+          } else if (payload.eventType === "DELETE") {
+            setEvents((prev) => prev.filter((e) => e.id !== payload.old?.id));
+          }
+        },
+      )
       .subscribe();
 
     return () => {
-      try {
-        supabaseClient.removeSubscription?.(subscription as any);
-      } catch {
-        // best-effort cleanup
-      }
+      channel.unsubscribe();
     };
   }, [profileData?.id]);
 

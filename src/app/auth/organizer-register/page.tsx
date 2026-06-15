@@ -115,7 +115,7 @@ export default function OrganizerRegisterPage() {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="John Doe"
-                className="mt-2 w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-2 w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </label>
 
@@ -129,7 +129,7 @@ export default function OrganizerRegisterPage() {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="you@example.com"
-                className="mt-2 w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-2 w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </label>
 
@@ -143,7 +143,7 @@ export default function OrganizerRegisterPage() {
                 value={formData.organizationName}
                 onChange={handleChange}
                 placeholder="Your company name"
-                className="mt-2 w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-2 w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </label>
 
@@ -157,7 +157,7 @@ export default function OrganizerRegisterPage() {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="0712 345 678"
-                className="mt-2 w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-2 w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </label>
 
@@ -171,7 +171,7 @@ export default function OrganizerRegisterPage() {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="At least 6 characters"
-                className="mt-2 w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-2 w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </label>
 

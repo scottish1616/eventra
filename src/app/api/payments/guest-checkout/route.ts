@@ -274,8 +274,9 @@ export async function POST(req: NextRequest) {
               attendeeName: buyerName,
               attendeeEmail: guestEmail,
               qrCode,
-            });
-        if (ticket) ticketIds.push(ticket.id);
+            })
+            .single();
+        if (ticket) ticketIds.push((ticket as any).id);
       }
 
       await supabase
