@@ -1,42 +1,40 @@
 const MPESA_ENV = process.env.MPESA_ENV || "sandbox";
 
 const BASE_URL =
-  process.env.MPESA_BASE_URL ||
-  (MPESA_ENV === "production"
+  MPESA_ENV === "production"
     ? "https://api.safaricom.co.ke"
-    : "https://sandbox.safaricom.co.ke");
+    : "https://sandbox.safaricom.co.ke";
 
-const DEFAULT_SANDBOX_SHORTCODE = "174379";
-const DEFAULT_SANDBOX_PASSKEY =
-  "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b1d8f1f27c7a2bd0f9d6a1";
-
-const CONSUMER_KEY = process.env.MPESA_CONSUMER_KEY!;
-const CONSUMER_SECRET = process.env.MPESA_CONSUMER_SECRET!;
-const SHORTCODE =
-  process.env.MPESA_SHORTCODE ||
-  (MPESA_ENV === "sandbox" ? DEFAULT_SANDBOX_SHORTCODE : undefined!);
-const PASSKEY =
-  process.env.MPESA_PASSKEY ||
-  (MPESA_ENV === "sandbox" ? DEFAULT_SANDBOX_PASSKEY : undefined!);
-const CALLBACK_URL = process.env.MPESA_CALLBACK_URL || "";
+const CONSUMER_KEY = (process.env.MPESA_CONSUMER_KEY || "").trim();
+const CONSUMER_SECRET = (process.env.MPESA_CONSUMER_SECRET || "").trim();
+const SHORTCODE = (process.env.MPESA_SHORTCODE || "").trim();
+const PASSKEY = (process.env.MPESA_PASSKEY || "").trim();
+const CALLBACK_URL = (process.env.MPESA_CALLBACK_URL || "").trim();
+const TRANSACTION_TYPE = (
+  process.env.MPESA_TRANSACTION_TYPE || "CustomerBuyGoodsOnline"
+).trim();
 
 let cachedToken: string | null = null;
 let tokenExpiry: number = 0;
 
 export async function getMpesaToken(): Promise<string> {
-  if (!CONSUMER_KEY || !CONSUMER_SECRET) {
-    throw new Error(
-      "M-Pesa credentials are missing. Set MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET."
-    );
-  }
-
   if (cachedToken && Date.now() < tokenExpiry) {
     return cachedToken;
+  }
+
+  if (!CONSUMER_KEY || !CONSUMER_SECRET) {
+    throw new Error(
+      "MPESA_CONSUMER_KEY or MPESA_CONSUMER_SECRET is not set in environment variables"
+    );
   }
 
   const credentials = Buffer.from(
     `${CONSUMER_KEY}:${CONSUMER_SECRET}`
   ).toString("base64");
+
+  console.log("[M-Pesa] ENV:", MPESA_ENV);
+  console.log("[M-Pesa] URL:", BASE_URL);
+  console.log("[M-Pesa] Key prefix:", CONSUMER_KEY.substring(0, 8));
 
   const res = await fetch(
     `${BASE_URL}/oauth/v1/generate?grant_type=client_credentials`,
@@ -45,20 +43,36 @@ export async function getMpesaToken(): Promise<string> {
       headers: {
         Authorization: `Basic ${credentials}`,
         "Content-Type": "application/json",
+        Accept: "application/json",
       },
+      cache: "no-store",
     }
   );
 
+  const text = await res.text();
+  console.log("[M-Pesa] Token status:", res.status);
+  console.log("[M-Pesa] Token body:", text);
+
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Failed to get M-Pesa token: ${text}`);
+    throw new Error(`Token request failed (${res.status}): ${text}`);
   }
 
-  const data = await res.json();
-  cachedToken = data.access_token;
-  tokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
+  let data: { access_token?: string; expires_in?: number };
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`Cannot parse token response: ${text}`);
+  }
 
-  return cachedToken!;
+  if (!data.access_token) {
+    throw new Error(`No access_token returned: ${text}`);
+  }
+
+  cachedToken = data.access_token;
+  tokenExpiry = Date.now() + ((data.expires_in || 3600) - 60) * 1000;
+  console.log("[M-Pesa] Token OK");
+
+  return cachedToken;
 }
 
 export function getMpesaTimestamp(): string {
@@ -75,28 +89,22 @@ export function getMpesaTimestamp(): string {
 }
 
 export function getMpesaPassword(timestamp: string): string {
-  if (!SHORTCODE || !PASSKEY) {
-    throw new Error(
-      "M-Pesa shortcode or passkey is missing. For sandbox use SHORTCODE=174379 and the sandbox passkey."
-    );
-  }
-
+  if (!SHORTCODE) throw new Error("MPESA_SHORTCODE is not set");
+  if (!PASSKEY) throw new Error("MPESA_PASSKEY is not set");
   const raw = `${SHORTCODE}${PASSKEY}${timestamp}`;
+  console.log("[M-Pesa] Password input shortcode:", SHORTCODE);
+  console.log("[M-Pesa] Password input passkey prefix:", PASSKEY.substring(0, 8));
   return Buffer.from(raw).toString("base64");
 }
 
-function validateMpesaConfig() {
-  if (!CALLBACK_URL) {
-    throw new Error(
-      "M-Pesa callback URL is missing. Set MPESA_CALLBACK_URL to a valid public callback endpoint."
-    );
+export function formatPhone(phone: string): string {
+  const cleaned = phone.replace(/[^0-9]/g, "");
+  if (cleaned.startsWith("254")) return cleaned;
+  if (cleaned.startsWith("0")) return "254" + cleaned.slice(1);
+  if (cleaned.startsWith("7") || cleaned.startsWith("1")) {
+    return "254" + cleaned;
   }
-
-  if (!CALLBACK_URL.startsWith("http://") && !CALLBACK_URL.startsWith("https://")) {
-    throw new Error(
-      "M-Pesa callback URL is invalid. It must start with http:// or https://."
-    );
-  }
+  return cleaned;
 }
 
 export async function initiateStkPush({
@@ -113,25 +121,34 @@ export async function initiateStkPush({
   const token = await getMpesaToken();
   const timestamp = getMpesaTimestamp();
   const password = getMpesaPassword(timestamp);
-
-  validateMpesaConfig();
-
   const formattedPhone = formatPhone(phone);
   const roundedAmount = Math.ceil(amount);
+
+  if (!CALLBACK_URL) {
+    throw new Error("MPESA_CALLBACK_URL is not set in environment variables");
+  }
+
+  console.log("[M-Pesa] STK phone:", formattedPhone);
+  console.log("[M-Pesa] STK amount:", roundedAmount);
+  console.log("[M-Pesa] STK shortcode:", SHORTCODE);
+  console.log("[M-Pesa] STK callback:", CALLBACK_URL);
+  console.log("[M-Pesa] STK type:", TRANSACTION_TYPE);
 
   const body = {
     BusinessShortCode: SHORTCODE,
     Password: password,
     Timestamp: timestamp,
-    TransactionType: "CustomerPayBillOnline",
+    TransactionType: TRANSACTION_TYPE,
     Amount: roundedAmount,
     PartyA: formattedPhone,
     PartyB: SHORTCODE,
     PhoneNumber: formattedPhone,
     CallBackURL: CALLBACK_URL,
-    AccountReference: orderId,
-    TransactionDesc: description,
+    AccountReference: orderId.substring(0, 12),
+    TransactionDesc: description.substring(0, 13),
   };
+
+  console.log("[M-Pesa] STK body:", JSON.stringify(body, null, 2));
 
   const res = await fetch(
     `${BASE_URL}/mpesa/stkpush/v1/processrequest`,
@@ -140,41 +157,46 @@ export async function initiateStkPush({
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
+        Accept: "application/json",
       },
       body: JSON.stringify(body),
     }
   );
 
+  const text = await res.text();
+  console.log("[M-Pesa] STK status:", res.status);
+  console.log("[M-Pesa] STK response:", text);
+
   if (!res.ok) {
-    const text = await res.text();
     throw new Error(`STK push failed: ${res.status} ${res.statusText} - ${text}`);
   }
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`STK push failed: ${text}`);
-  }
+  let data: {
+    ResponseCode?: string;
+    ResponseDescription?: string;
+    CheckoutRequestID?: string;
+    MerchantRequestID?: string;
+    CustomerMessage?: string;
+    errorMessage?: string;
+    errorCode?: string;
+  };
 
-  const data = await res.json();
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`Cannot parse STK response: ${text}`);
+  }
 
   if (data.ResponseCode !== "0") {
     throw new Error(
-      data.ResponseDescription || data.errorMessage || "STK push failed"
+      data.ResponseDescription ||
+        data.errorMessage ||
+        `STK failed with code: ${data.errorCode}`
     );
   }
 
+  console.log("[M-Pesa] STK push sent successfully:", data.CheckoutRequestID);
   return data;
-}
-
-export function formatPhone(phone: string): string {
-  const cleaned = phone.replace(/\s+/g, "").replace(/[^0-9+]/g, "");
-  if (cleaned.startsWith("+254")) return cleaned.replace("+", "");
-  if (cleaned.startsWith("254")) return cleaned;
-  if (cleaned.startsWith("0")) return `254${cleaned.slice(1)}`;
-  if (cleaned.startsWith("7") || cleaned.startsWith("1")) {
-    return `254${cleaned}`;
-  }
-  return cleaned;
 }
 
 export function parseMpesaCallback(body: Record<string, unknown>) {
@@ -206,7 +228,8 @@ export function parseMpesaCallback(body: Record<string, unknown>) {
 
   const items = CallbackMetadata?.Item || [];
   const get = (name: string) =>
-    items.find((i) => i.Name === name)?.Value;
+    items.find((i: { Name: string; Value: unknown }) => i.Name === name)
+      ?.Value;
 
   return {
     success: true,

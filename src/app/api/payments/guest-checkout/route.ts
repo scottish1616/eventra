@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { generateQRCode } from "@/lib/qrcode";
 import { initiateStkPush, formatPhone } from "@/lib/mpesa";
 
 function getSupabase() {
@@ -193,11 +192,15 @@ export async function POST(req: NextRequest) {
     // Handle M-Pesa STK push
     if (paymentMethod === "MPESA") {
       try {
+        const cleanPhone = formatPhone(buyerPhone);
+        console.log("[Guest Checkout] M-Pesa phone:", cleanPhone);
+        console.log("[Guest Checkout] M-Pesa amount:", total);
+
         const stkResult = await initiateStkPush({
-          phone: formatPhone(buyerPhone),
+          phone: cleanPhone,
           amount: total,
           orderId: order.id,
-          description: `Eventra ticket - ${event.title}`,
+          description: `Ticket - ${event.title.substring(0, 13)}`,
         });
 
         await supabase.from("payments").insert({
@@ -215,7 +218,7 @@ export async function POST(req: NextRequest) {
             paymentMethod: "MPESA",
             checkoutRequestId: stkResult.CheckoutRequestID,
             message:
-              "STK push sent to your phone. Enter your M-Pesa PIN to complete payment.",
+              "M-Pesa prompt sent to your phone. Enter your PIN to complete payment.",
             tickets: [],
             awaitingPayment: true,
           },
@@ -225,21 +228,21 @@ export async function POST(req: NextRequest) {
           mpesaError instanceof Error
             ? mpesaError.message
             : "M-Pesa error";
-        console.error("[M-Pesa STK]", msg);
+        console.error("[M-Pesa STK Error]", msg);
 
         await supabase.from("orders").delete().eq("id", order.id);
 
         return NextResponse.json(
           {
             success: false,
-            error: `M-Pesa failed: ${msg}. Please try again or use test payment.`,
+            error: `M-Pesa failed: ${msg}`,
           },
           { status: 500 }
         );
       }
     }
 
-    // Simulated payment
+    // Simulated payment flow
     await supabase.from("payments").insert({
       orderId: order.id,
       amount: total,
@@ -260,23 +263,25 @@ export async function POST(req: NextRequest) {
         const ticketId = crypto.randomUUID();
         const ticketNumber = generateTicketNumber(event.title);
         const qrPayload = generateQrPayload(ticketId, eventId);
-          const qrCode = await generateQRCode(qrPayload);
 
-          const { data: ticket } = await supabase
-            .from("tickets")
-            .insert({
-              id: ticketId,
-              ticketNumber,
-              userId,
-              eventId,
-              orderId: order.id,
-              ticketTypeId: tt.id,
-              attendeeName: buyerName,
-              attendeeEmail: guestEmail,
-              qrCode,
-            })
-            .single();
-        if (ticket) ticketIds.push((ticket as any).id);
+        const { data: ticket } = await supabase
+          .from("tickets")
+          .insert({
+            id: ticketId,
+            ticketNumber,
+            userId,
+            eventId,
+            orderId: order.id,
+            ticketTypeId: tt.id,
+            attendeeName: buyerName,
+            attendeeEmail: guestEmail,
+            qrCode: "",
+            qrCodeData: qrPayload,
+          })
+          .select("id")
+          .single();
+
+        if (ticket) ticketIds.push((ticket as { id: string }).id);
       }
 
       await supabase
