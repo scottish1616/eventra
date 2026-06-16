@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="600" fill="url(#g)" />
+  <g fill="rgba(255,255,255,0.9)" font-family="Arial, Helvetica, sans-serif" font-size="48">
+    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">No cover image</text>
+  </g>
+</svg>

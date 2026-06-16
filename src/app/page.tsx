@@ -1,9 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, MapPin, Calendar, Ticket, ArrowRight, Zap, Shield, Star } from "lucide-react";
+import {
+  Search,
+  MapPin,
+  Calendar,
+  Ticket,
+  ArrowRight,
+  X,
+  Menu,
+  Info,
+  ChevronRight,
+  Star,
+} from "lucide-react";
+import GlassHero from "@/components/ui/GlassHero";
+import ProfessionalEventCard from "@/components/events/ProfessionalEventCard";
+import EventPreviewModal from "@/components/events/EventPreviewModal";
 
 interface Event {
   id: string;
@@ -12,6 +26,7 @@ interface Event {
   location: string;
   slug: string;
   ticketTypes: { price: number }[];
+  coverImage?: string;
 }
 
 export default function HomePage() {
@@ -20,22 +35,32 @@ export default function HomePage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [ticketNumber, setTicketNumber] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<"events" | "about">("events");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewEvent, setPreviewEvent] = useState<Event | null>(null);
 
   useEffect(() => {
     fetch("/api/events")
       .then((r) => r.json())
-      .then((d) => { setEvents(d.data || []); setLoading(false); })
+      .then((d) => {
+        setEvents(d.data || []);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, []);
 
-  const filtered = events.filter((e) =>
-    e.title.toLowerCase().includes(search.toLowerCase()) ||
-    e.location.toLowerCase().includes(search.toLowerCase())
+  const filtered = events.filter(
+    (e) =>
+      e.title.toLowerCase().includes(search.toLowerCase()) ||
+      e.location.toLowerCase().includes(search.toLowerCase()),
   );
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("en-KE", {
-      day: "numeric", month: "short", year: "numeric",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
     });
 
   const minPrice = (ticketTypes: { price: number }[]) => {
@@ -45,7 +70,9 @@ export default function HomePage() {
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-KE", {
-      style: "currency", currency: "KES", minimumFractionDigits: 0,
+      style: "currency",
+      currency: "KES",
+      minimumFractionDigits: 0,
     }).format(amount);
 
   const handleTicketLookup = () => {
@@ -54,366 +81,490 @@ export default function HomePage() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
+  const navItems = [
+    { id: "events", label: "Browse Events", icon: Calendar },
+    { id: "about", label: "About Eventra", icon: Info },
+  ];
 
-      {/* Navbar */}
-      <nav className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+  return (
+    <div className="min-h-screen page-bg page-text flex">
+      {/* Sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`fixed top-0 left-0 h-full w-72 bg-[#070b19] shadow-2xl z-50 transform transition-transform duration-300 flex flex-col ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:shadow-none lg:border-r lg:border-gray-800`}
+      >
+        {/* Logo */}
+        <div className="p-6 border-b border-white/10">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center shadow-md">
                 <Ticket className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-xl text-gray-900">Eventra</span>
+              <span className="font-bold text-xl text-white">Eventra</span>
             </div>
-            <div className="flex items-center gap-3">
-              <Link
-                href="/auth/login"
-                className="text-sm font-medium text-gray-600 hover:text-purple-600 transition-colors"
-              >
-                Organizer sign in
-              </Link>
-              <Link
-                href="/auth/login"
-                className="btn-primary text-sm py-2 px-4"
-              >
-                Get started
-              </Link>
-            </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden text-slate-300 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-        </div>
-      </nav>
-
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-purple-700 to-blue-700" />
-        <div className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage: `radial-gradient(circle at 25% 25%, white 1px, transparent 1px), radial-gradient(circle at 75% 75%, white 1px, transparent 1px)`,
-            backgroundSize: "50px 50px"
-          }}
-        />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white text-sm font-medium px-4 py-2 rounded-full mb-6 border border-white/30">
-            <Zap className="w-4 h-4" />
-            No account needed to buy tickets
-          </div>
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
-            Your next event
-            <br />
-            <span className="text-yellow-300">starts here</span>
-          </h1>
-          <p className="text-purple-100 text-lg mb-10 max-w-2xl mx-auto">
-            Find events across Kenya. Pay with M-Pesa. Get your QR ticket instantly. No app, no account needed.
+          <p className="text-xs text-slate-400 mt-2">
+            Kenya's event ticketing platform
           </p>
-
-          {/* Search */}
-          <div className="max-w-2xl mx-auto">
-            <div className="flex gap-2 bg-white rounded-2xl p-2 shadow-2xl">
-              <div className="flex-1 flex items-center gap-3 px-3">
-                <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search events by name or city..."
-                  className="flex-1 text-sm text-gray-900 focus:outline-none bg-transparent"
-                  onKeyDown={(e) => e.key === "Enter" && {}}
-                />
-              </div>
-              <button className="btn-primary text-sm py-2.5 px-6 rounded-xl">
-                Search
-              </button>
-            </div>
-
-            {/* Ticket lookup */}
-            <div className="mt-4 flex gap-2 bg-white/10 backdrop-blur-sm rounded-xl p-2 border border-white/20">
-              <div className="flex-1 flex items-center gap-3 px-3">
-                <Ticket className="w-4 h-4 text-white/70 flex-shrink-0" />
-                <input
-                  type="text"
-                  value={ticketNumber}
-                  onChange={(e) => setTicketNumber(e.target.value.toUpperCase())}
-                  placeholder="Enter ticket number to view your ticket..."
-                  className="flex-1 text-sm text-white placeholder-white/50 focus:outline-none bg-transparent font-mono"
-                  onKeyDown={(e) => e.key === "Enter" && handleTicketLookup()}
-                />
-              </div>
-              <button
-                onClick={handleTicketLookup}
-                className="bg-white/20 hover:bg-white/30 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors"
-              >
-                View ticket
-              </button>
-            </div>
-          </div>
         </div>
 
-        {/* Wave */}
-        <div className="relative">
-          <svg viewBox="0 0 1440 60" className="w-full fill-gray-50" preserveAspectRatio="none">
-            <path d="M0,60 C360,0 1080,60 1440,0 L1440,60 L0,60 Z" />
-          </svg>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-4 mb-12">
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { icon: "🎟️", value: "KES 0", label: "Setup fee" },
-            { icon: "⚡", value: "3 min", label: "To create event" },
-            { icon: "📱", value: "M-Pesa", label: "Payments" },
-          ].map((s) => (
-            <div key={s.label} className="card p-5 text-center shadow-md">
-              <p className="text-2xl mb-1">{s.icon}</p>
-              <p className="text-lg font-bold text-purple-600">{s.value}</p>
-              <p className="text-xs text-gray-500">{s.label}</p>
-            </div>
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-1">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3 mb-3">
+            Navigation
+          </p>
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveSection(item.id as typeof activeSection);
+                setSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                activeSection === item.id
+                  ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md"
+                  : "text-slate-300 hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              <item.icon className="w-4 h-4" />
+              {item.label}
+              {activeSection !== item.id && (
+                <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-40" />
+              )}
+            </button>
           ))}
-        </div>
-      </section>
+        </nav>
 
-      {/* Events */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              {search ? `Results for "${search}"` : "Upcoming events"}
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {filtered.length} event{filtered.length !== 1 ? "s" : ""} available
-            </p>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="card p-6 animate-pulse">
-                <div className="h-40 bg-gray-100 rounded-xl mb-4" />
-                <div className="h-4 bg-gray-100 rounded mb-2" />
-                <div className="h-3 bg-gray-100 rounded w-2/3" />
-              </div>
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="card p-16 text-center">
-            <div className="text-5xl mb-4">🔍</div>
-            <p className="text-gray-600 font-semibold text-lg">No events found</p>
-            <p className="text-sm text-gray-400 mt-2">Try a different search term</p>
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((event) => (
-              <Link
-                key={event.id}
-                href={`/event/${event.slug}/buy`}
-                className="card overflow-hidden hover:shadow-xl hover:shadow-purple-100 transition-all duration-300 hover:-translate-y-1 group"
-              >
-                <div className="h-44 bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center relative overflow-hidden">
-                  <div className="absolute inset-0 opacity-20"
-                    style={{
-                      backgroundImage: `radial-gradient(circle at 50% 50%, white 1px, transparent 1px)`,
-                      backgroundSize: "20px 20px"
-                    }}
-                  />
-                  <p className="text-5xl relative z-10">🎉</p>
-                  <div className="absolute top-3 right-3">
-                    <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full border border-white/30">
-                      Live
-                    </span>
-                  </div>
-                </div>
-                <div className="p-5">
-                  <h3 className="font-bold text-gray-900 text-base mb-3 group-hover:text-purple-600 transition-colors line-clamp-2">
-                    {event.title}
-                  </h3>
-                  <div className="space-y-1.5 mb-4">
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <Calendar className="w-3.5 h-3.5 text-purple-400" />
-                      {formatDate(event.date)}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <MapPin className="w-3.5 h-3.5 text-purple-400" />
-                      {event.location}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <div>
-                      <p className="text-xs text-gray-400">From</p>
-                      <p className="text-base font-bold text-purple-600">
-                        {formatCurrency(minPrice(event.ticketTypes))}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-xl group-hover:shadow-md transition-all">
-                      Buy ticket
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Features */}
-      <section className="bg-white py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold text-gray-900 mb-3">
-              Why organizers choose Eventra
-            </h2>
-            <p className="text-gray-500 max-w-xl mx-auto">
-              Everything you need to run successful events in Kenya
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: <Zap className="w-6 h-6" />,
-                title: "Instant setup",
-                desc: "Create your event in 3 minutes. Add ticket types, set prices, share your link.",
-                color: "from-yellow-400 to-orange-500",
-              },
-              {
-                icon: <Shield className="w-6 h-6" />,
-                title: "Secure payments",
-                desc: "M-Pesa integration built in. Every ticket has a tamper-proof QR code.",
-                color: "from-green-400 to-emerald-600",
-              },
-              {
-                icon: <Star className="w-6 h-6" />,
-                title: "Real-time dashboard",
-                desc: "Track sales, revenue, and attendees live from your organizer dashboard.",
-                color: "from-purple-500 to-blue-600",
-              },
-            ].map((f) => (
-              <div key={f.title} className="card p-7 hover:shadow-lg transition-shadow">
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${f.color} flex items-center justify-center text-white mb-5 shadow-md`}>
-                  {f.icon}
-                </div>
-                <h3 className="font-bold text-gray-900 text-lg mb-2">{f.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold text-gray-900 mb-3">How it works</h2>
-            <p className="text-gray-500">Simple for organizers. Even simpler for attendees.</p>
-          </div>
-          <div className="grid md:grid-cols-2 gap-10">
-            <div className="card p-7">
-              <div className="inline-flex items-center gap-2 bg-purple-50 text-purple-700 text-xs font-bold px-3 py-1.5 rounded-full mb-6 uppercase tracking-wider">
-                For organizers
-              </div>
-              {[
-                { n: "1", t: "Create your account", d: "Admin creates your organizer account" },
-                { n: "2", t: "Create your event", d: "Add details, date, location and ticket prices" },
-                { n: "3", t: "Share your link", d: "Share on WhatsApp, social media or anywhere" },
-                { n: "4", t: "Track and earn", d: "Watch sales and revenue in real time" },
-              ].map((s) => (
-                <div key={s.n} className="flex gap-4 mb-5 last:mb-0">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white text-sm font-bold flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md">
-                    {s.n}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900 text-sm">{s.t}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{s.d}</p>
-                  </div>
-                </div>
-              ))}
-              <Link href="/auth/login" className="btn-primary mt-6 w-full flex items-center justify-center gap-2 text-sm">
-                Get started <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-
-            <div className="card p-7">
-              <div className="inline-flex items-center gap-2 bg-green-50 text-green-700 text-xs font-bold px-3 py-1.5 rounded-full mb-6 uppercase tracking-wider">
-                For attendees
-              </div>
-              {[
-                { n: "1", t: "Find your event", d: "Search or follow the organizer link" },
-                { n: "2", t: "Pick your ticket", d: "Choose Regular, VIP or VVIP" },
-                { n: "3", t: "Enter name and phone", d: "No account needed at all" },
-                { n: "4", t: "Pay and get ticket", d: "M-Pesa prompt and instant QR ticket" },
-              ].map((s) => (
-                <div key={s.n} className="flex gap-4 mb-5 last:mb-0">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-white text-sm font-bold flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md">
-                    {s.n}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900 text-sm">{s.t}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{s.d}</p>
-                  </div>
-                </div>
-              ))}
-              <div className="mt-6 bg-green-50 border border-green-100 rounded-xl p-4 text-center">
-                <p className="text-sm font-semibold text-green-700">No account or app needed</p>
-                <p className="text-xs text-green-600 mt-0.5">Just open the link and pay with M-Pesa</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600" />
-        <div className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage: `radial-gradient(circle at 25% 25%, white 1px, transparent 1px)`,
-            backgroundSize: "30px 30px"
-          }}
-        />
-        <div className="relative max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Ready to sell your first ticket?
-          </h2>
-          <p className="text-purple-100 text-lg mb-8 max-w-xl mx-auto">
-            Join organizers across Kenya running successful events on Eventra.
+        {/* Ticket lookup in sidebar */}
+        <div className="p-4 border-t border-white/10">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+            Find your ticket
           </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={ticketNumber}
+              onChange={(e) => setTicketNumber(e.target.value.toUpperCase())}
+              placeholder="Ticket number..."
+              className="flex-1 input-surface text-sm font-mono"
+              onKeyDown={(e) => e.key === "Enter" && handleTicketLookup()}
+            />
+            <button
+              onClick={handleTicketLookup}
+              className="rounded-2xl btn-brand px-4 py-2 text-xs"
+            >
+              Find
+            </button>
+          </div>
+        </div>
+
+        {/* Portal & Auth Links */}
+        <div className="p-4 border-t border-white/10 space-y-2">
           <Link
-            href="/auth/login"
-            className="inline-flex items-center gap-2 bg-white text-purple-700 font-bold px-8 py-4 rounded-2xl hover:shadow-2xl hover:shadow-purple-900/30 transition-all hover:-translate-y-0.5 text-base"
+            href="/landing/organizer"
+            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-white/5 border border-purple-500/20 px-4 py-2 text-xs font-bold text-purple-100 hover:bg-white/10 transition"
           >
-            Start for free <ArrowRight className="w-5 h-5" />
+            For Organizers
+          </Link>
+          <Link
+            href="/landing/attendee"
+            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-white/5 border border-blue-500/20 px-4 py-2 text-xs font-bold text-cyan-100 hover:bg-white/10 transition"
+          >
+            For Attendees
+          </Link>
+          <Link
+            href="/landing/admin"
+            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-white/5 border border-red-500/20 px-4 py-2 text-xs font-bold text-rose-100 hover:bg-white/10 transition"
+          >
+            Admin Portal
+          </Link>
+          <Link
+            href="/complaints"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10 transition"
+          >
+            Report an issue
           </Link>
         </div>
-      </section>
+      </aside>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-h-screen">
+        {/* Top navbar (mobile) */}
+        <nav className="bg-[#070b19] border-b border-white/10 shadow-sm sticky top-0 z-30 lg:hidden">
+          <div className="flex items-center justify-between px-4 h-16">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 text-slate-300 hover:text-white"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
                 <Ticket className="w-4 h-4 text-white" />
               </div>
-              <span className="font-bold text-white text-lg">Eventra Ticketing</span>
+              <span className="font-bold text-white">Eventra</span>
             </div>
-            <p className="text-gray-400 text-sm">
-              {String(new Date().getFullYear())} Eventra. Built for Kenya.
-            </p>
-            <div className="flex items-center gap-6">
-              <Link href="/auth/login" className="text-gray-400 hover:text-white text-sm transition-colors">
-                Organizer login
-              </Link>
-              <Link href="/ticket/lookup" className="text-gray-400 hover:text-white text-sm transition-colors">
-                Find my ticket
-              </Link>
+            <Link
+              href="/auth/login"
+              className="text-xs font-semibold text-cyan-200 hover:text-white"
+            >
+              Sign in
+            </Link>
+          </div>
+        </nav>
+
+        {/* Browse Events section */}
+        {activeSection === "events" && (
+          <div className="flex-1">
+            {/* Hero */}
+            <div>
+              <React.Suspense fallback={
+                <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-purple-700 to-blue-700 py-16 px-6">
+                  <div className="relative max-w-3xl mx-auto text-center">
+                    <h1 className="text-3xl md:text-5xl font-bold text-white mb-3 leading-tight">Find your next event</h1>
+                    <p className="text-purple-100 mb-8">Browse events across Kenya. Pay with M-Pesa. No account needed.</p>
+                  </div>
+                </div>
+              }>
+                <GlassHero search={search} setSearch={setSearch} />
+              </React.Suspense>
+
+              <div className="mt-8 surface-panel p-6">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-wide text-purple-300">
+                      Choose your path
+                    </p>
+                    <p className="mt-2 text-slate-300 max-w-2xl">
+                      Explore the right portal for your role: admin management, event creation, or ticket booking.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <Link
+                      href="/landing/admin"
+                      className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 px-4 py-3 text-sm font-semibold text-white hover:from-red-600 hover:to-orange-600 transition-colors"
+                    >
+                      Admin portal
+                    </Link>
+                    <Link
+                      href="/landing/organizer"
+                      className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-3 text-sm font-semibold text-white hover:from-purple-700 hover:to-blue-700 transition-colors"
+                    >
+                      Organizer signup
+                    </Link>
+                    <Link
+                      href="/landing/attendee"
+                      className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:from-blue-700 hover:to-cyan-700 transition-colors"
+                    >
+                      Attendee deals
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Events grid */}
+            <div className="max-w-6xl mx-auto px-4 py-10">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-white">
+                    {search ? `Results for "${search}"` : "Upcoming events"}
+                  </h2>
+                  <p className="text-sm text-slate-400 mt-0.5">
+                    {filtered.length} event{filtered.length !== 1 ? "s" : ""}{" "}
+                    found
+                  </p>
+                </div>
+              </div>
+
+              {loading ? (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="glass-card p-6 animate-pulse">
+                        <div className="h-40 bg-gray-800 rounded-xl mb-4" />
+                        <div className="h-4 bg-gray-800 rounded mb-2" />
+                        <div className="h-3 bg-gray-800 rounded w-2/3" />
+                      </div>
+                    ))}
+                  </div>
+              ) : filtered.length === 0 ? (
+                <div className="card p-16 text-center">
+                  <p className="text-5xl mb-4">🔍</p>
+                  <p className="text-gray-600 font-semibold">No events found</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Try a different search
+                  </p>
+                </div>
+              ) : (
+                <>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filtered.map((event, index) => (
+                    <ProfessionalEventCard
+                      key={event.id}
+                      event={event}
+                      index={index}
+                      onPreview={() => {
+                        setPreviewEvent(event);
+                        setPreviewOpen(true);
+                      }}
+                      onClick={() => router.push(`/event/${event.slug}/buy`)}
+                    />
+                  ))}
+                </div>
+                <EventPreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} event={previewEvent} />
+                </>
+              )}
             </div>
           </div>
-        </div>
-      </footer>
+        )}
+
+        {/* About section */}
+
+        {/* About section */}
+        {activeSection === "about" && (
+          <div className="flex-1 max-w-4xl mx-auto px-4 py-12">
+            <div className="text-center mb-12">
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <Ticket className="w-8 h-8 text-white" />
+              </div>
+              <h1 className="text-3xl font-bold text-white mb-3">
+                About Eventra
+              </h1>
+              <p className="text-slate-300 max-w-2xl mx-auto text-lg">
+                Kenya's modern event ticketing platform built by Kenyans, for Kenyans. Empowering organizers and connecting attendees.
+              </p>
+            </div>
+
+            {/* Mission & Vision */}
+            <div className="grid md:grid-cols-2 gap-8 mb-12">
+              <div className="surface-card-soft p-8">
+                <h2 className="font-bold text-white text-xl mb-4">Our Mission</h2>
+                <p className="text-slate-300 leading-relaxed">
+                  Simplify event ticketing in Kenya. We make it effortless for organizers to create events and collect payments, while attendees can discover and book tickets without friction. Zero complexity. Maximum impact.
+                </p>
+              </div>
+
+              <div className="surface-card-soft p-8">
+                <h2 className="font-bold text-white text-xl mb-4">Our Vision</h2>
+                <p className="text-slate-300 leading-relaxed">
+                </p>
+              </div>
+            </div>
+
+            {/* Core Values */}
+            <div className="surface-card p-8 mb-12">
+              <h2 className="font-bold text-white text-xl mb-8">Why We Exist</h2>
+              <div className="grid md:grid-cols-3 gap-6">
+                {[
+                  {
+                    icon: "⚡",
+                    title: "Speed",
+                    desc: "Create events in minutes, not days. Sell tickets instantly.",
+                  },
+                  {
+                    icon: "🤝",
+                    title: "Simplicity",
+                    desc: "Zero complexity. Intuitive interface. No learning curve.",
+                  },
+                  {
+                    icon: "🇰🇪",
+                    title: "Built for Kenya",
+                    desc: "M-Pesa first. Works on any phone. Offline friendly.",
+                  },
+                  {
+                    icon: "💪",
+                    title: "Empowerment",
+                    desc: "Tools that help organizers grow their business.",
+                  },
+                  {
+                    icon: "📊",
+                    title: "Transparency",
+                    desc: "Real-time analytics. No hidden fees. Complete control.",
+                  },
+                  {
+                    icon: "🛡️",
+                    title: "Security",
+                    desc: "QR verification. Safe payments. Data protection.",
+                  },
+                ].map((value, i) => (
+                  <div key={i} className="text-center p-4">
+                    <div className="text-4xl mb-3">{value.icon}</div>
+                    <h3 className="font-bold text-white mb-2">{value.title}</h3>
+                    <p className="text-sm text-slate-300">{value.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Key Features Section */}
+            <div className="surface-card p-8 mb-12">
+              <h2 className="font-bold text-white text-xl mb-6">What Makes Eventra Different</h2>
+              <div className="space-y-4">
+                {[
+                  {
+                    title: "✓ No Account Required",
+                    desc: "Attendees can buy tickets in seconds without creating an account. Just name + phone number.",
+                  },
+                  {
+                    title: "✓ M-Pesa Integration",
+                    desc: "First platform in Kenya with native M-Pesa integration. Direct to organizer account.",
+                  },
+                  {
+                    title: "✓ QR Verification",
+                    desc: "Tamper-proof QR tickets. Instant verification at the gate. No fraud.",
+                  },
+                  {
+                    title: "✓ Real-Time Analytics",
+                    desc: "Live dashboards for organizers. Track sales, attendees, revenue instantly.",
+                  },
+                  {
+                    title: "✓ Organizer Support",
+                    desc: "Dedicated support team. Guidance on pricing, promotion, and event management.",
+                  },
+                  {
+                    title: "✓ Scalable Solution",
+                    desc: "From intimate workshops to large conferences. Platform grows with you.",
+                  },
+                ].map((feature, i) => (
+                  <div key={i} className="border-l-4 border-purple-600 pl-4">
+                    <p className="font-bold text-white">{feature.title}</p>
+                    <p className="text-sm text-slate-300 mt-1">{feature.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Statistics */}
+            <div className="grid md:grid-cols-4 gap-6 mb-12">
+              {[
+                { value: "100+", label: "Active Organizers" },
+                { value: "50K+", label: "Happy Attendees" },
+                { value: "KES 50M+", label: "Tickets Sold" },
+                { value: "24/7", label: "Support Available" },
+              ].map((stat, i) => (
+                <div key={i} className="surface-card p-6 text-center bg-[#090d1c] border-white/10">
+                  <div className="text-3xl font-bold text-purple-300 mb-2">{stat.value}</div>
+                  <p className="text-sm text-slate-400 font-medium">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Contact section */}
+            <div className="surface-card p-8">
+              <h2 className="font-bold text-white text-xl mb-6">Get In Touch</h2>
+              <div className="grid md:grid-cols-2 gap-8">
+                <div>
+                  <h3 className="font-semibold text-white mb-4">Support & Inquiries</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">📧</span>
+                      <div>
+                        <p className="text-xs text-slate-400 font-medium">Email</p>
+                        <a
+                          href="mailto:kisakalevi15@gmail.com"
+                          className="text-sm font-semibold text-purple-300 hover:underline"
+                        >
+                          kisakalevi15@gmail.com
+                        </a>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">📱</span>
+                      <div>
+                        <p className="text-xs text-slate-400 font-medium">Phone</p>
+                        <p className="text-sm font-semibold text-white">+254 746484946</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-white mb-4">Organizer Registration</h3>
+                  <p className="text-sm text-slate-400 mb-4">
+                    Want to start selling tickets? We offer comprehensive support for new organizers.
+                  </p>
+                  <Link
+                    href="/auth/organizer-register"
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-95 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+                  >
+                    Register as Organizer <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <footer className="bg-gray-900 py-8 px-6 mt-auto">
+          <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
+                <Ticket className="w-4 h-4 text-white" />
+              </div>
+              <span className="font-bold text-white">Eventra Ticketing</span>
+            </div>
+            <p className="text-slate-400 text-sm font-medium">
+              {String(new Date().getFullYear())} Eventra. Built for Kenya.
+            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
+              <div className="flex gap-4 flex-wrap">
+                <Link
+                  href="/auth/login"
+                  className="text-slate-400 hover:text-white text-xs font-medium transition-colors"
+                >
+                  Organizer login
+                </Link>
+                <Link
+                  href="/ticket/lookup"
+                  className="text-slate-400 hover:text-white text-xs font-medium transition-colors"
+                >
+                  Find my ticket
+                </Link>
+              </div>
+              <div className="flex gap-3 flex-wrap">
+                <a
+                  href="https://www.facebook.com/profile.php?id=61577863482658"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-slate-400 hover:text-white text-xs font-medium transition-colors"
+                >
+                  Facebook
+                </a>
+                <a
+                  href="https://www.instagram.com/levikisaka?igsh=MXF0Y3R5aTluY2w5NQ=="
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-slate-400 hover:text-white text-xs font-medium transition-colors"
+                >
+                  Instagram
+                </a>
+                <a
+                  href="https://www.tiktok.com/@leviekisaka"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-slate-400 hover:text-white text-xs font-medium transition-colors"
+                >
+                  TikTok
+                </a>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }

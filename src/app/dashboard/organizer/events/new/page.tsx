@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { Upload } from "lucide-react";
 
 interface TicketTypeForm {
   category: "REGULAR" | "VIP" | "VVIP";
@@ -19,6 +20,7 @@ export default function NewEventPage() {
   const { data: session, status } = useSession();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     title: "",
@@ -27,6 +29,7 @@ export default function NewEventPage() {
     endDate: "",
     location: "",
     venue: "",
+    coverImageFile: null as File | null,
   });
 
   const [ticketTypes, setTicketTypes] = useState<TicketTypeForm[]>([
@@ -68,11 +71,28 @@ export default function NewEventPage() {
     );
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setForm({ ...form, coverImageFile: file });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (ticketTypes.length === 0) {
+if (!form.coverImageFile) {
+        setError("Please upload a cover image before creating the event.");
+        return;
+      }
+
+      if (ticketTypes.length === 0) {
       setError("Add at least one ticket type");
       return;
     }
@@ -80,13 +100,21 @@ export default function NewEventPage() {
     setLoading(true);
 
     try {
+      const formData = new FormData();
+      formData.append("title", form.title);
+      formData.append("description", form.description);
+      formData.append("date", form.date);
+      formData.append("endDate", form.endDate);
+      formData.append("location", form.location);
+      formData.append("venue", form.venue);
+      if (form.coverImageFile) {
+        formData.append("coverImage", form.coverImageFile);
+      }
+      formData.append("ticketTypes", JSON.stringify(ticketTypes));
+
       const res = await fetch("/api/events", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          ticketTypes,
-        }),
+        body: formData,
       });
 
       const json = await res.json();
@@ -136,28 +164,28 @@ export default function NewEventPage() {
           </div>
           Eventra
         </Link>
-        <span className="text-sm text-gray-600">{session?.user?.name}</span>
+        <span className="text-sm text-gray-700 font-medium">{session?.user?.name}</span>
       </nav>
 
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="flex items-center gap-3 mb-8">
           <Link
             href="/dashboard/organizer"
-            className="text-sm text-gray-500 hover:text-gray-700"
+            className="text-sm text-gray-700 hover:text-gray-900 font-medium"
           >
             ← Dashboard
           </Link>
-          <span className="text-gray-300">/</span>
+          <span className="text-gray-400">/</span>
           <h1 className="text-xl font-bold text-gray-900">Create new event</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Event details */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="font-semibold text-gray-900 mb-4">Event details</h2>
+            <h2 className="font-bold text-gray-900 mb-4">Event details</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label className="block text-sm font-bold text-gray-900 mb-1.5">
                   Event title
                 </label>
                 <input
@@ -165,12 +193,12 @@ export default function NewEventPage() {
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder="e.g. Nairobi Tech Summit 2025"
                   required
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label className="block text-sm font-bold text-gray-900 mb-1.5">
                   Description
                 </label>
                 <textarea
@@ -180,13 +208,13 @@ export default function NewEventPage() {
                   }
                   rows={3}
                   placeholder="Tell attendees what your event is about..."
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label className="block text-sm font-bold text-gray-900 mb-1.5">
                     Start date and time
                   </label>
                   <input
@@ -196,11 +224,11 @@ export default function NewEventPage() {
                       setForm({ ...form, date: e.target.value })
                     }
                     required
-                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label className="block text-sm font-bold text-gray-900 mb-1.5">
                     End date and time
                   </label>
                   <input
@@ -209,13 +237,13 @@ export default function NewEventPage() {
                     onChange={(e) =>
                       setForm({ ...form, endDate: e.target.value })
                     }
-                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label className="block text-sm font-bold text-gray-900 mb-1.5">
                   City or location
                 </label>
                 <input
@@ -225,12 +253,12 @@ export default function NewEventPage() {
                   }
                   placeholder="e.g. Nairobi, Kenya"
                   required
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label className="block text-sm font-bold text-gray-900 mb-1.5">
                   Venue name
                 </label>
                 <input
@@ -239,8 +267,56 @@ export default function NewEventPage() {
                     setForm({ ...form, venue: e.target.value })
                   }
                   placeholder="e.g. KICC, Kenyatta International Convention Centre"
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                  Event cover image
+                </label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  {imagePreview ? (
+                    <div className="space-y-3">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="h-40 w-full object-cover rounded-lg mx-auto"
+                      />
+                      <p className="text-sm font-semibold text-gray-900">
+                        {form.coverImageFile?.name}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForm({ ...form, coverImageFile: null });
+                          setImagePreview(null);
+                        }}
+                        className="text-xs text-red-600 hover:text-red-700 font-medium"
+                      >
+                        Remove image
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="cursor-pointer space-y-2">
+                      <Upload className="w-8 h-8 text-gray-400 mx-auto" />
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          Upload event image
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          PNG, JPG or GIF (max. 5MB)
+                        </p>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -248,11 +324,11 @@ export default function NewEventPage() {
           {/* Ticket types */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-gray-900">Ticket types</h2>
+              <h2 className="font-bold text-gray-900">Ticket types</h2>
               <button
                 type="button"
                 onClick={addTicketType}
-                className="text-sm text-violet-600 font-medium hover:text-violet-700"
+                className="text-sm text-violet-600 font-bold hover:text-violet-700"
               >
                 + Add ticket type
               </button>
@@ -274,7 +350,7 @@ export default function NewEventPage() {
                           e.target.value as "REGULAR" | "VIP" | "VVIP"
                         )
                       }
-                      className="text-sm font-semibold bg-transparent border-none focus:outline-none cursor-pointer"
+                      className="text-sm font-bold text-gray-900 bg-transparent border-none focus:outline-none cursor-pointer"
                     >
                       <option value="REGULAR">Regular</option>
                       <option value="VIP">VIP</option>
@@ -284,7 +360,7 @@ export default function NewEventPage() {
                       <button
                         type="button"
                         onClick={() => removeTicketType(index)}
-                        className="text-xs text-red-500 hover:text-red-700"
+                        className="text-xs text-red-600 font-medium hover:text-red-700"
                       >
                         Remove
                       </button>
@@ -293,7 +369,7 @@ export default function NewEventPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label className="block text-xs font-bold text-gray-900 mb-1">
                         Ticket name
                       </label>
                       <input
@@ -303,11 +379,11 @@ export default function NewEventPage() {
                         }
                         placeholder="e.g. Early Bird"
                         required
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-500 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label className="block text-xs font-bold text-gray-900 mb-1">
                         Price (KES)
                       </label>
                       <input
@@ -323,11 +399,11 @@ export default function NewEventPage() {
                         }
                         placeholder="2500"
                         required
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-500 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label className="block text-xs font-bold text-gray-900 mb-1">
                         Total slots
                       </label>
                       <input
@@ -343,11 +419,11 @@ export default function NewEventPage() {
                         }
                         placeholder="100"
                         required
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-500 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label className="block text-xs font-bold text-gray-900 mb-1">
                         Max per order
                       </label>
                       <input
@@ -361,13 +437,13 @@ export default function NewEventPage() {
                             parseInt(e.target.value) || 10
                           )
                         }
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-500 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                       />
                     </div>
                   </div>
 
                   <div className="mt-3">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                    <label className="block text-xs font-bold text-gray-900 mb-1">
                       Description (optional)
                     </label>
                     <input
@@ -376,7 +452,7 @@ export default function NewEventPage() {
                         updateTicketType(index, "description", e.target.value)
                       }
                       placeholder="What is included with this ticket?"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-500 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
                     />
                   </div>
                 </div>
@@ -393,7 +469,7 @@ export default function NewEventPage() {
           <div className="flex gap-3">
             <Link
               href="/dashboard/organizer"
-              className="flex-1 text-center py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+              className="flex-1 text-center py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 hover:bg-gray-50 transition"
             >
               Cancel
             </Link>

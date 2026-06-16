@@ -1,5 +1,5 @@
 import NextAuth from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
+import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { createClient } from "@supabase/supabase-js";
 
@@ -10,19 +10,30 @@ function getSupabase() {
   );
 }
 
+const nextAuthUrl = process.env.NEXTAUTH_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
+if (nextAuthUrl) {
+  process.env.NEXTAUTH_URL = nextAuthUrl;
+}
+const nextAuthSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+if (nextAuthSecret) {
+  process.env.NEXTAUTH_SECRET = nextAuthSecret;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: nextAuthSecret,
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: { signIn: "/auth/login" },
+  debug: process.env.NODE_ENV !== "production",
   providers: [
-    CredentialsProvider({
-      name: "credentials",
+    Credentials({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-
         try {
           const supabase = getSupabase();
           const { data, error } = await supabase
@@ -62,15 +73,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.email = token.email as string;
+      if (token && session.user) {
+        session.user.id = token.id as string;
+        (session.user as any).role = token.role;
         session.user.name = token.name as string;
-        (session.user as unknown as Record<string, unknown>).role = token.role;
-        (session.user as unknown as Record<string, unknown>).id = token.id;
+        session.user.email = token.email as string;
       }
       return session;
     },
   },
 });
 
-export const authOptions = { auth };
+export const authOptions = {};

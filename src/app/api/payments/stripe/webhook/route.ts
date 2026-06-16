@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { constructWebhookEvent } from "@/lib/stripe";
 import { issueTicketsForOrder } from "@/lib/tickets";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   const signature = req.headers.get("stripe-signature");
