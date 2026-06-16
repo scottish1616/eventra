@@ -24,7 +24,7 @@ export async function getMpesaToken(): Promise<string> {
 
   if (!CONSUMER_KEY || !CONSUMER_SECRET) {
     throw new Error(
-      "MPESA_CONSUMER_KEY or MPESA_CONSUMER_SECRET is not set in environment variables"
+      "MPESA_CONSUMER_KEY or MPESA_CONSUMER_SECRET is not set"
     );
   }
 
@@ -33,8 +33,10 @@ export async function getMpesaToken(): Promise<string> {
   ).toString("base64");
 
   console.log("[M-Pesa] ENV:", MPESA_ENV);
-  console.log("[M-Pesa] URL:", BASE_URL);
+  console.log("[M-Pesa] Base URL:", BASE_URL);
   console.log("[M-Pesa] Key prefix:", CONSUMER_KEY.substring(0, 8));
+  console.log("[M-Pesa] Transaction type:", TRANSACTION_TYPE);
+  console.log("[M-Pesa] Shortcode:", SHORTCODE);
 
   const res = await fetch(
     `${BASE_URL}/oauth/v1/generate?grant_type=client_credentials`,
@@ -70,7 +72,7 @@ export async function getMpesaToken(): Promise<string> {
 
   cachedToken = data.access_token;
   tokenExpiry = Date.now() + ((data.expires_in || 3600) - 60) * 1000;
-  console.log("[M-Pesa] Token OK");
+  console.log("[M-Pesa] Token obtained successfully");
 
   return cachedToken;
 }
@@ -92,8 +94,6 @@ export function getMpesaPassword(timestamp: string): string {
   if (!SHORTCODE) throw new Error("MPESA_SHORTCODE is not set");
   if (!PASSKEY) throw new Error("MPESA_PASSKEY is not set");
   const raw = `${SHORTCODE}${PASSKEY}${timestamp}`;
-  console.log("[M-Pesa] Password input shortcode:", SHORTCODE);
-  console.log("[M-Pesa] Password input passkey prefix:", PASSKEY.substring(0, 8));
   return Buffer.from(raw).toString("base64");
 }
 
@@ -125,14 +125,14 @@ export async function initiateStkPush({
   const roundedAmount = Math.ceil(amount);
 
   if (!CALLBACK_URL) {
-    throw new Error("MPESA_CALLBACK_URL is not set in environment variables");
+    throw new Error("MPESA_CALLBACK_URL is not set");
   }
 
   console.log("[M-Pesa] STK phone:", formattedPhone);
   console.log("[M-Pesa] STK amount:", roundedAmount);
   console.log("[M-Pesa] STK shortcode:", SHORTCODE);
-  console.log("[M-Pesa] STK callback:", CALLBACK_URL);
   console.log("[M-Pesa] STK type:", TRANSACTION_TYPE);
+  console.log("[M-Pesa] STK callback:", CALLBACK_URL);
 
   const body = {
     BusinessShortCode: SHORTCODE,
@@ -168,7 +168,9 @@ export async function initiateStkPush({
   console.log("[M-Pesa] STK response:", text);
 
   if (!res.ok) {
-    throw new Error(`STK push failed: ${res.status} ${res.statusText} - ${text}`);
+    throw new Error(
+      `STK push failed: ${res.status} ${res.statusText} - ${text}`
+    );
   }
 
   let data: {
@@ -195,7 +197,10 @@ export async function initiateStkPush({
     );
   }
 
-  console.log("[M-Pesa] STK push sent successfully:", data.CheckoutRequestID);
+  console.log(
+    "[M-Pesa] STK push sent. CheckoutRequestID:",
+    data.CheckoutRequestID
+  );
   return data;
 }
 
@@ -228,8 +233,9 @@ export function parseMpesaCallback(body: Record<string, unknown>) {
 
   const items = CallbackMetadata?.Item || [];
   const get = (name: string) =>
-    items.find((i: { Name: string; Value: unknown }) => i.Name === name)
-      ?.Value;
+    items.find(
+      (i: { Name: string; Value: unknown }) => i.Name === name
+    )?.Value;
 
   return {
     success: true,
