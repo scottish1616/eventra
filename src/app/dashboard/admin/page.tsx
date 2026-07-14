@@ -14,13 +14,14 @@ import { EventsTable } from "@/components/admin/EventsTable";
 import { OrganizersTable } from "@/components/admin/OrganizersTable";
 import { PendingOrganizersApproval } from "@/components/admin/PendingOrganizersApproval";
 import { ComplaintsCenter } from "@/components/shared/ComplaintsCenter";
+import { PromotionsAdmin } from "@/components/admin/PromotionsAdmin";
 import type {
   Event,
   Organizer,
   PlatformStats,
 } from "@/components/shared/types";
 
-type Tab = "overview" | "events" | "organizers" | "complaints" | "settings";
+type Tab = "overview" | "events" | "organizers" | "complaints" | "promotions" | "settings";
 
 type SessionUser = {
   name?: string | null;
@@ -42,6 +43,7 @@ const tabConfig: Record<Tab, { title: string; subtitle: string }> = {
     title: "Complaints Center",
     subtitle: "Handle escalated issues",
   },
+  promotions: { title: "Promotions", subtitle: "Review and manage promotion requests" },
   settings: { title: "Settings", subtitle: "Platform configuration" },
 };
 
@@ -396,6 +398,10 @@ export default function AdminDashboard() {
 
                 {activeTab === "complaints" && (
                   <ComplaintsCenter role="admin" />
+                )}
+
+                {activeTab === "promotions" && (
+                  <PromotionsAdmin />
                 )}
 
                 {activeTab === "settings" && (

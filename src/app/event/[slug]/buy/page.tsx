@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle, Smartphone, Ticket } from "lucide-react";
+import { ArrowLeft, CheckCircle, Smartphone, Ticket, Shield } from "lucide-react";
+import { useSession } from "next-auth/react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 
@@ -38,6 +39,7 @@ type PaymentMethod = "MPESA" | "SIMULATED";
 export default function EventBuyPage() {
   const params = useParams();
   const router = useRouter();
+  const { data: session } = useSession();
   const slug = params?.slug as string | undefined;
 
   const [event, setEvent] = useState<EventData | null>(null);
@@ -134,7 +136,8 @@ export default function EventBuyPage() {
       .map(([ticketTypeId, quantity]) => ({ ticketTypeId, quantity }));
 
     try {
-      const res = await fetch("/api/payments/guest-checkout", {
+      const endpoint = session?.user ? "/api/payments/checkout" : "/api/payments/guest-checkout";
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -153,6 +156,7 @@ export default function EventBuyPage() {
 
       if (!res.ok || !json.success) {
         setError(json.error || "Checkout failed. Please try again.");
+        setSubmitting(false);
         return;
       }
 
@@ -286,6 +290,29 @@ export default function EventBuyPage() {
               </div>
             </Card>
             </div>
+
+            {/* Sign in prompt for non-signed-in users */}
+            {!session && (
+              <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <Shield className="w-5 h-5 text-purple-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-white">
+                      Sign in for a better experience
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Track your tickets and earn loyalty points
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href={`/auth/login?redirect=/event/${slug}/buy`}
+                  className="flex-shrink-0 text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors whitespace-nowrap"
+                >
+                  Sign in →
+                </Link>
+              </div>
+            )}
 
             <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Buyer details</h2>

@@ -6,7 +6,7 @@ import {
   Ticket, X, ChevronRight, LogOut,
   LayoutDashboard, Calendar, BarChart3,
   Users, MessageSquare, Settings, Plus,
-  Shield
+  Shield, Zap
 } from "lucide-react";
 
 interface NavItem {
@@ -33,14 +33,17 @@ const adminNav: NavItem[] = [
   { id: "events", label: "Events", icon: Calendar },
   { id: "organizers", label: "Organizers", icon: Users },
   { id: "complaints", label: "Complaints", icon: MessageSquare },
+  { id: "promotions", label: "Promotions", icon: Zap },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
 const organizerNav: NavItem[] = [
   { id: "overview", label: "Dashboard", icon: LayoutDashboard },
   { id: "events", label: "My Events", icon: Calendar },
+  { id: "staff", label: "Staff", icon: Users },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "complaints", label: "Attendee Issues", icon: MessageSquare },
+  { id: "promotions", label: "Promotions", icon: Zap },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 

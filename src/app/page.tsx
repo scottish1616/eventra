@@ -1,23 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Search,
-  MapPin,
-  Calendar,
-  Ticket,
-  ArrowRight,
-  X,
-  Menu,
-  Info,
-  ChevronRight,
-  Star,
+  Search, MapPin, Calendar, Ticket,
+  ChevronRight, Bell, User, Menu, X,
+  Star, ArrowRight, Zap, Shield, Clock
 } from "lucide-react";
-import GlassHero from "@/components/ui/GlassHero";
-import ProfessionalEventCard from "@/components/events/ProfessionalEventCard";
-import EventPreviewModal from "@/components/events/EventPreviewModal";
 
 interface Event {
   id: string;
@@ -25,42 +15,34 @@ interface Event {
   date: string;
   location: string;
   slug: string;
+  venue: string | null;
   ticketTypes: { price: number }[];
-  coverImage?: string;
 }
 
 export default function HomePage() {
   const router = useRouter();
-  const [search, setSearch] = useState("");
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [ticketNumber, setTicketNumber] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState<"events" | "about">("events");
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewEvent, setPreviewEvent] = useState<Event | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch("/api/events")
       .then((r) => r.json())
-      .then((d) => {
-        setEvents(d.data || []);
-        setLoading(false);
-      })
+      .then((d) => { setEvents(d.data || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
-  const filtered = events.filter(
-    (e) =>
-      e.title.toLowerCase().includes(search.toLowerCase()) ||
-      e.location.toLowerCase().includes(search.toLowerCase()),
+  const filtered = events.filter((e) =>
+    e.title.toLowerCase().includes(search.toLowerCase()) ||
+    e.location.toLowerCase().includes(search.toLowerCase())
   );
 
-  const formatDate = (date: string) =>
-    new Date(date).toLocaleDateString("en-KE", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString("en-KE", {
+      day: "numeric", month: "short", year: "numeric",
     });
 
   const minPrice = (ticketTypes: { price: number }[]) => {
@@ -68,12 +50,10 @@ export default function HomePage() {
     return Math.min(...ticketTypes.map((t) => t.price));
   };
 
-  const formatCurrency = (amount: number) =>
+  const formatCurrency = (n: number) =>
     new Intl.NumberFormat("en-KE", {
-      style: "currency",
-      currency: "KES",
-      minimumFractionDigits: 0,
-    }).format(amount);
+      style: "currency", currency: "KES", minimumFractionDigits: 0,
+    }).format(n);
 
   const handleTicketLookup = () => {
     if (ticketNumber.trim()) {
@@ -81,490 +61,509 @@ export default function HomePage() {
     }
   };
 
-  const navItems = [
-    { id: "events", label: "Browse Events", icon: Calendar },
-    { id: "about", label: "About Eventra", icon: Info },
+  const reviews = [
+    { name: "James Mwangi", review: "Bought my ticket in under 2 minutes. The QR code worked perfectly at the gate.", rating: 5, event: "Nairobi Tech Summit" },
+    { name: "Grace Akinyi", review: "Best ticketing experience in Kenya. M-Pesa payment was instant.", rating: 5, event: "Mombasa Music Festival" },
+    { name: "David Kipchoge", review: "Simple, fast and no hustle. Will use Eventra for every event.", rating: 5, event: "Kisumu Startup Night" },
+    { name: "Sarah Wanjiru", review: "I loved how easy it was. Just my name and phone. Done.", rating: 5, event: "Nairobi Comedy Night" },
   ];
 
   return (
-    <div className="min-h-screen page-bg page-text flex">
-      {/* Sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+    <div className="min-h-screen bg-gray-950 text-white">
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed top-0 left-0 h-full w-72 bg-[#070b19] shadow-2xl z-50 transform transition-transform duration-300 flex flex-col ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:shadow-none lg:border-r lg:border-gray-800`}
-      >
-        {/* Logo */}
-        <div className="p-6 border-b border-white/10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center shadow-md">
+      {/* Navbar */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-gray-950/80 backdrop-blur-xl border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
                 <Ticket className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-xl text-white">Eventra</span>
-            </div>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-slate-300 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <p className="text-xs text-slate-400 mt-2">
-            Kenya's event ticketing platform
-          </p>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3 mb-3">
-            Navigation
-          </p>
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveSection(item.id as typeof activeSection);
-                setSidebarOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                activeSection === item.id
-                  ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md"
-                  : "text-slate-300 hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              <item.icon className="w-4 h-4" />
-              {item.label}
-              {activeSection !== item.id && (
-                <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-40" />
-              )}
-            </button>
-          ))}
-        </nav>
-
-        {/* Ticket lookup in sidebar */}
-        <div className="p-4 border-t border-white/10">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-            Find your ticket
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={ticketNumber}
-              onChange={(e) => setTicketNumber(e.target.value.toUpperCase())}
-              placeholder="Ticket number..."
-              className="flex-1 input-surface text-sm font-mono"
-              onKeyDown={(e) => e.key === "Enter" && handleTicketLookup()}
-            />
-            <button
-              onClick={handleTicketLookup}
-              className="rounded-2xl btn-brand px-4 py-2 text-xs"
-            >
-              Find
-            </button>
-          </div>
-        </div>
-
-        {/* Portal & Auth Links */}
-        <div className="p-4 border-t border-white/10 space-y-2">
-          <Link
-            href="/landing/organizer"
-            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-white/5 border border-purple-500/20 px-4 py-2 text-xs font-bold text-purple-100 hover:bg-white/10 transition"
-          >
-            For Organizers
-          </Link>
-          <Link
-            href="/landing/attendee"
-            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-white/5 border border-blue-500/20 px-4 py-2 text-xs font-bold text-cyan-100 hover:bg-white/10 transition"
-          >
-            For Attendees
-          </Link>
-          <Link
-            href="/landing/admin"
-            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-white/5 border border-red-500/20 px-4 py-2 text-xs font-bold text-rose-100 hover:bg-white/10 transition"
-          >
-            Admin Portal
-          </Link>
-          <Link
-            href="/complaints"
-            className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10 transition"
-          >
-            Report an issue
-          </Link>
-        </div>
-      </aside>
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-screen">
-        {/* Top navbar (mobile) */}
-        <nav className="bg-[#070b19] border-b border-white/10 shadow-sm sticky top-0 z-30 lg:hidden">
-          <div className="flex items-center justify-between px-4 h-16">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 text-slate-300 hover:text-white"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
-                <Ticket className="w-4 h-4 text-white" />
-              </div>
-              <span className="font-bold text-white">Eventra</span>
-            </div>
-            <Link
-              href="/auth/login"
-              className="text-xs font-semibold text-cyan-200 hover:text-white"
-            >
-              Sign in
+              <span className="font-black text-xl tracking-tight">
+                <span className="text-white">EVENTRA</span>
+              </span>
             </Link>
-          </div>
-        </nav>
 
-        {/* Browse Events section */}
-        {activeSection === "events" && (
-          <div className="flex-1">
-            {/* Hero */}
-            <div>
-              <React.Suspense fallback={
-                <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-purple-700 to-blue-700 py-16 px-6">
-                  <div className="relative max-w-3xl mx-auto text-center">
-                    <h1 className="text-3xl md:text-5xl font-bold text-white mb-3 leading-tight">Find your next event</h1>
-                    <p className="text-purple-100 mb-8">Browse events across Kenya. Pay with M-Pesa. No account needed.</p>
-                  </div>
-                </div>
-              }>
-                <GlassHero search={search} setSearch={setSearch} />
-              </React.Suspense>
-
-              <div className="mt-8 surface-panel p-6">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold uppercase tracking-wide text-purple-300">
-                      Choose your path
-                    </p>
-                    <p className="mt-2 text-slate-300 max-w-2xl">
-                      Explore the right portal for your role: admin management, event creation, or ticket booking.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <Link
-                      href="/landing/admin"
-                      className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 px-4 py-3 text-sm font-semibold text-white hover:from-red-600 hover:to-orange-600 transition-colors"
-                    >
-                      Admin portal
-                    </Link>
-                    <Link
-                      href="/landing/organizer"
-                      className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-3 text-sm font-semibold text-white hover:from-purple-700 hover:to-blue-700 transition-colors"
-                    >
-                      Organizer signup
-                    </Link>
-                    <Link
-                      href="/landing/attendee"
-                      className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-3 text-sm font-semibold text-white hover:from-blue-700 hover:to-cyan-700 transition-colors"
-                    >
-                      Attendee deals
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Events grid */}
-            <div className="max-w-6xl mx-auto px-4 py-10">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-white">
-                    {search ? `Results for "${search}"` : "Upcoming events"}
-                  </h2>
-                  <p className="text-sm text-slate-400 mt-0.5">
-                    {filtered.length} event{filtered.length !== 1 ? "s" : ""}{" "}
-                    found
-                  </p>
-                </div>
-              </div>
-
-              {loading ? (
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="glass-card p-6 animate-pulse">
-                        <div className="h-40 bg-gray-800 rounded-xl mb-4" />
-                        <div className="h-4 bg-gray-800 rounded mb-2" />
-                        <div className="h-3 bg-gray-800 rounded w-2/3" />
-                      </div>
-                    ))}
-                  </div>
-              ) : filtered.length === 0 ? (
-                <div className="card p-16 text-center">
-                  <p className="text-5xl mb-4">🔍</p>
-                  <p className="text-gray-600 font-semibold">No events found</p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Try a different search
-                  </p>
-                </div>
-              ) : (
-                <>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filtered.map((event, index) => (
-                    <ProfessionalEventCard
-                      key={event.id}
-                      event={event}
-                      index={index}
-                      onPreview={() => {
-                        setPreviewEvent(event);
-                        setPreviewOpen(true);
-                      }}
-                      onClick={() => router.push(`/event/${event.slug}/buy`)}
-                    />
-                  ))}
-                </div>
-                <EventPreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} event={previewEvent} />
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* About section */}
-
-        {/* About section */}
-        {activeSection === "about" && (
-          <div className="flex-1 max-w-4xl mx-auto px-4 py-12">
-            <div className="text-center mb-12">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <Ticket className="w-8 h-8 text-white" />
-              </div>
-              <h1 className="text-3xl font-bold text-white mb-3">
-                About Eventra
-              </h1>
-              <p className="text-slate-300 max-w-2xl mx-auto text-lg">
-                Kenya's modern event ticketing platform built by Kenyans, for Kenyans. Empowering organizers and connecting attendees.
-              </p>
-            </div>
-
-            {/* Mission & Vision */}
-            <div className="grid md:grid-cols-2 gap-8 mb-12">
-              <div className="surface-card-soft p-8">
-                <h2 className="font-bold text-white text-xl mb-4">Our Mission</h2>
-                <p className="text-slate-300 leading-relaxed">
-                  Simplify event ticketing in Kenya. We make it effortless for organizers to create events and collect payments, while attendees can discover and book tickets without friction. Zero complexity. Maximum impact.
-                </p>
-              </div>
-
-              <div className="surface-card-soft p-8">
-                <h2 className="font-bold text-white text-xl mb-4">Our Vision</h2>
-                <p className="text-slate-300 leading-relaxed">
-                </p>
-              </div>
-            </div>
-
-            {/* Core Values */}
-            <div className="surface-card p-8 mb-12">
-              <h2 className="font-bold text-white text-xl mb-8">Why We Exist</h2>
-              <div className="grid md:grid-cols-3 gap-6">
-                {[
-                  {
-                    icon: "⚡",
-                    title: "Speed",
-                    desc: "Create events in minutes, not days. Sell tickets instantly.",
-                  },
-                  {
-                    icon: "🤝",
-                    title: "Simplicity",
-                    desc: "Zero complexity. Intuitive interface. No learning curve.",
-                  },
-                  {
-                    icon: "🇰🇪",
-                    title: "Built for Kenya",
-                    desc: "M-Pesa first. Works on any phone. Offline friendly.",
-                  },
-                  {
-                    icon: "💪",
-                    title: "Empowerment",
-                    desc: "Tools that help organizers grow their business.",
-                  },
-                  {
-                    icon: "📊",
-                    title: "Transparency",
-                    desc: "Real-time analytics. No hidden fees. Complete control.",
-                  },
-                  {
-                    icon: "🛡️",
-                    title: "Security",
-                    desc: "QR verification. Safe payments. Data protection.",
-                  },
-                ].map((value, i) => (
-                  <div key={i} className="text-center p-4">
-                    <div className="text-4xl mb-3">{value.icon}</div>
-                    <h3 className="font-bold text-white mb-2">{value.title}</h3>
-                    <p className="text-sm text-slate-300">{value.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Key Features Section */}
-            <div className="surface-card p-8 mb-12">
-              <h2 className="font-bold text-white text-xl mb-6">What Makes Eventra Different</h2>
-              <div className="space-y-4">
-                {[
-                  {
-                    title: "✓ No Account Required",
-                    desc: "Attendees can buy tickets in seconds without creating an account. Just name + phone number.",
-                  },
-                  {
-                    title: "✓ M-Pesa Integration",
-                    desc: "First platform in Kenya with native M-Pesa integration. Direct to organizer account.",
-                  },
-                  {
-                    title: "✓ QR Verification",
-                    desc: "Tamper-proof QR tickets. Instant verification at the gate. No fraud.",
-                  },
-                  {
-                    title: "✓ Real-Time Analytics",
-                    desc: "Live dashboards for organizers. Track sales, attendees, revenue instantly.",
-                  },
-                  {
-                    title: "✓ Organizer Support",
-                    desc: "Dedicated support team. Guidance on pricing, promotion, and event management.",
-                  },
-                  {
-                    title: "✓ Scalable Solution",
-                    desc: "From intimate workshops to large conferences. Platform grows with you.",
-                  },
-                ].map((feature, i) => (
-                  <div key={i} className="border-l-4 border-purple-600 pl-4">
-                    <p className="font-bold text-white">{feature.title}</p>
-                    <p className="text-sm text-slate-300 mt-1">{feature.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Statistics */}
-            <div className="grid md:grid-cols-4 gap-6 mb-12">
+            {/* Desktop nav */}
+            <div className="hidden md:flex items-center gap-1">
               {[
-                { value: "100+", label: "Active Organizers" },
-                { value: "50K+", label: "Happy Attendees" },
-                { value: "KES 50M+", label: "Tickets Sold" },
-                { value: "24/7", label: "Support Available" },
-              ].map((stat, i) => (
-                <div key={i} className="surface-card p-6 text-center bg-[#090d1c] border-white/10">
-                  <div className="text-3xl font-bold text-purple-300 mb-2">{stat.value}</div>
-                  <p className="text-sm text-slate-400 font-medium">{stat.label}</p>
-                </div>
+                { label: "Home", href: "/" },
+                { label: "Events", href: "/events" },
+                { label: "Categories", href: "/categories" },
+                { label: "Contact", href: "/contact" },
+              ].map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+                >
+                  {item.label}
+                </Link>
               ))}
             </div>
 
-            {/* Contact section */}
-            <div className="surface-card p-8">
-              <h2 className="font-bold text-white text-xl mb-6">Get In Touch</h2>
-              <div className="grid md:grid-cols-2 gap-8">
-                <div>
-                  <h3 className="font-semibold text-white mb-4">Support & Inquiries</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl">📧</span>
-                      <div>
-                        <p className="text-xs text-slate-400 font-medium">Email</p>
-                        <a
-                          href="mailto:kisakalevi15@gmail.com"
-                          className="text-sm font-semibold text-purple-300 hover:underline"
-                        >
-                          kisakalevi15@gmail.com
-                        </a>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl">📱</span>
-                      <div>
-                        <p className="text-xs text-slate-400 font-medium">Phone</p>
-                        <p className="text-sm font-semibold text-white">+254 746484946</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+            {/* Right actions */}
+            <div className="hidden md:flex items-center gap-3">
+              <button className="relative p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">
+                <Bell className="w-5 h-5" />
+              </button>
+              <Link
+                href="/auth/login"
+                className="px-4 py-2 text-sm font-semibold text-gray-300 hover:text-white border border-white/10 hover:border-white/20 rounded-xl transition-all"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/auth/register"
+                className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl hover:opacity-90 transition-all shadow-lg shadow-purple-500/20"
+              >
+                Sign up
+              </Link>
+            </div>
 
-                <div>
-                  <h3 className="font-semibold text-white mb-4">Organizer Registration</h3>
-                  <p className="text-sm text-slate-400 mb-4">
-                    Want to start selling tickets? We offer comprehensive support for new organizers.
-                  </p>
-                  <Link
-                    href="/auth/organizer-register"
-                    className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-95 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
-                  >
-                    Register as Organizer <ArrowRight className="w-4 h-4" />
-                  </Link>
-                </div>
-              </div>
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 text-gray-400 hover:text-white"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-gray-900 border-t border-white/10 px-4 py-4 space-y-2">
+            {[
+              { label: "Home", href: "/" },
+              { label: "Events", href: "/events" },
+              { label: "Categories", href: "/categories" },
+              { label: "Contact", href: "/contact" },
+            ].map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-2.5 text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+              >
+                {item.label}
+              </Link>
+            ))}
+            <div className="flex gap-2 pt-2 border-t border-white/10">
+              <Link href="/auth/login" className="flex-1 text-center py-2.5 text-sm font-semibold border border-white/10 rounded-xl text-gray-300">
+                Sign in
+              </Link>
+              <Link href="/auth/register" className="flex-1 text-center py-2.5 text-sm font-semibold bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl text-white">
+                Sign up
+              </Link>
             </div>
           </div>
         )}
+      </nav>
 
-        {/* Footer */}
-        <footer className="bg-gray-900 py-8 px-6 mt-auto">
-          <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
-                <Ticket className="w-4 h-4 text-white" />
+      {/* Hero Section */}
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
+
+        {/* Background */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-950 via-purple-950/30 to-gray-950" />
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-600/20 rounded-full blur-3xl animate-pulse delay-1000" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/5 rounded-full blur-3xl" />
+        </div>
+
+        {/* Floating ticket decorations */}
+        <div className="absolute top-32 right-20 hidden lg:block animate-bounce" style={{ animationDuration: "3s" }}>
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 shadow-2xl rotate-12">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center">
+                <Ticket className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-white">Eventra Ticketing</span>
-            </div>
-            <p className="text-slate-400 text-sm font-medium">
-              {String(new Date().getFullYear())} Eventra. Built for Kenya.
-            </p>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
-              <div className="flex gap-4 flex-wrap">
-                <Link
-                  href="/auth/login"
-                  className="text-slate-400 hover:text-white text-xs font-medium transition-colors"
-                >
-                  Organizer login
-                </Link>
-                <Link
-                  href="/ticket/lookup"
-                  className="text-slate-400 hover:text-white text-xs font-medium transition-colors"
-                >
-                  Find my ticket
-                </Link>
-              </div>
-              <div className="flex gap-3 flex-wrap">
-                <a
-                  href="https://www.facebook.com/profile.php?id=61577863482658"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-slate-400 hover:text-white text-xs font-medium transition-colors"
-                >
-                  Facebook
-                </a>
-                <a
-                  href="https://www.instagram.com/levikisaka?igsh=MXF0Y3R5aTluY2w5NQ=="
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-slate-400 hover:text-white text-xs font-medium transition-colors"
-                >
-                  Instagram
-                </a>
-                <a
-                  href="https://www.tiktok.com/@leviekisaka"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-slate-400 hover:text-white text-xs font-medium transition-colors"
-                >
-                  TikTok
-                </a>
+              <div>
+                <p className="text-xs font-bold text-white">TICKET</p>
+                <p className="text-xs text-gray-400">*** *** ***</p>
               </div>
             </div>
           </div>
-        </footer>
-      </div>
+        </div>
+
+        <div className="absolute bottom-40 left-20 hidden lg:block animate-bounce" style={{ animationDuration: "4s", animationDelay: "1s" }}>
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 shadow-2xl -rotate-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-blue-500 rounded-xl flex items-center justify-center">
+                <Ticket className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white">TICKET</p>
+                <p className="text-xs text-gray-400">*** *** ***</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Hero content */}
+        <div className="relative z-10 max-w-5xl mx-auto px-4 text-center">
+
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm font-medium px-4 py-2 rounded-full mb-8">
+            <Zap className="w-4 h-4 text-yellow-400" />
+            Kenya&apos;s #1 Event Ticketing Platform
+          </div>
+
+          {/* Main heading */}
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black mb-4 leading-none tracking-tight">
+            <span className="block text-white">EVENTRA</span>
+            <span className="block">
+              <em className="not-italic font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-blue-400 to-teal-400 italic">
+                ***tickets***
+              </em>
+            </span>
+          </h1>
+
+          {/* Caption */}
+          <p className="text-lg md:text-2xl text-gray-300 mb-4 font-medium max-w-3xl mx-auto leading-relaxed">
+            &apos;EVENTRA: Elevating your ticket experience,
+            <br />
+            <span className="text-white font-bold">one epic moment at a time.</span>&apos;
+          </p>
+
+          <p className="text-gray-400 text-base mb-10 max-w-xl mx-auto">
+            Buy tickets with M-Pesa. No app needed. No account required to buy.
+            Get your QR ticket instantly.
+          </p>
+
+          {/* Search bar */}
+          <div className="max-w-2xl mx-auto mb-6">
+            <div className="flex gap-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-2 shadow-2xl">
+              <div className="flex-1 flex items-center gap-3 px-3">
+                <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search events by name or city..."
+                  className="flex-1 text-sm text-white placeholder-gray-500 focus:outline-none bg-transparent"
+                />
+              </div>
+              <button className="bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition shadow-lg">
+                Search
+              </button>
+            </div>
+          </div>
+
+          {/* Ticket lookup */}
+          <div className="max-w-2xl mx-auto flex gap-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-2">
+            <div className="flex-1 flex items-center gap-3 px-3">
+              <Ticket className="w-4 h-4 text-gray-500 flex-shrink-0" />
+              <input
+                type="text"
+                value={ticketNumber}
+                onChange={(e) => setTicketNumber(e.target.value.toUpperCase())}
+                placeholder="Enter ticket number to view your ticket..."
+                className="flex-1 text-sm text-white placeholder-gray-600 focus:outline-none bg-transparent font-mono"
+                onKeyDown={(e) => e.key === "Enter" && handleTicketLookup()}
+              />
+            </div>
+            <button
+              onClick={handleTicketLookup}
+              className="bg-white/10 hover:bg-white/20 text-white text-sm font-medium py-2.5 px-4 rounded-xl transition-all border border-white/10"
+            >
+              View ticket
+            </button>
+          </div>
+
+          {/* Stats */}
+          <div className="flex items-center justify-center gap-8 mt-12">
+            {[
+              { value: "10K+", label: "Tickets sold" },
+              { value: "500+", label: "Events hosted" },
+              { value: "98%", label: "Happy attendees" },
+            ].map((s) => (
+              <div key={s.label} className="text-center">
+                <p className="text-2xl font-black text-white">{s.value}</p>
+                <p className="text-xs text-gray-500">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Scroll indicator */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+          <div className="w-6 h-10 border-2 border-white/20 rounded-full flex items-start justify-center pt-2">
+            <div className="w-1 h-2 bg-white/40 rounded-full" />
+          </div>
+        </div>
+      </section>
+
+      {/* Upcoming Events */}
+      <section className="py-20 bg-gray-950">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between mb-10">
+            <div>
+              <h2 className="text-3xl font-black text-white mb-1">
+                Upcoming Events
+              </h2>
+              <p className="text-gray-500 text-sm">
+                {filtered.length} event{filtered.length !== 1 ? "s" : ""} available
+              </p>
+            </div>
+            <Link
+              href="/events"
+              className="flex items-center gap-2 text-sm font-semibold text-purple-400 hover:text-purple-300 transition-colors"
+            >
+              View all <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          {/* Scrollable events */}
+          <div
+            ref={scrollRef}
+            className="flex gap-5 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory"
+            style={{ scrollbarWidth: "none" }}
+          >
+            {loading ? (
+              [1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="flex-shrink-0 w-72 bg-white/5 border border-white/10 rounded-3xl overflow-hidden animate-pulse snap-start"
+                >
+                  <div className="h-44 bg-white/10" />
+                  <div className="p-5 space-y-3">
+                    <div className="h-4 bg-white/10 rounded" />
+                    <div className="h-3 bg-white/10 rounded w-2/3" />
+                    <div className="h-8 bg-white/10 rounded-xl" />
+                  </div>
+                </div>
+              ))
+            ) : filtered.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center py-16 text-center">
+                <Ticket className="w-12 h-12 text-gray-700 mb-4" />
+                <p className="text-gray-400 font-semibold">No events found</p>
+                <p className="text-gray-600 text-sm mt-1">Try a different search</p>
+              </div>
+            ) : (
+              filtered.map((event) => (
+                <div
+                  key={event.id}
+                  className="flex-shrink-0 w-72 bg-white/5 border border-white/10 rounded-3xl overflow-hidden hover:border-purple-500/50 hover:shadow-2xl hover:shadow-purple-500/10 transition-all duration-300 group snap-start"
+                >
+                  {/* Event image placeholder */}
+                  <div className="h-44 bg-gradient-to-br from-purple-900/50 to-blue-900/50 relative overflow-hidden">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <p className="text-5xl">🎉</p>
+                    </div>
+                    <div className="absolute top-3 right-3">
+                      <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full border border-white/20">
+                        LIVE
+                      </span>
+                    </div>
+                    <div className="absolute bottom-3 left-3">
+                      <span className="bg-purple-600/80 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full">
+                        {formatCurrency(minPrice(event.ticketTypes))}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-5">
+                    <h3 className="font-bold text-white text-base mb-3 group-hover:text-purple-300 transition-colors line-clamp-2">
+                      {event.title}
+                    </h3>
+                    <div className="space-y-1.5 mb-4">
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <Calendar className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+                        {formatDate(event.date)}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <MapPin className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+                        {event.location}
+                        {event.venue ? ` · ${event.venue}` : ""}
+                      </div>
+                    </div>
+                    <Link
+                      href={`/event/${event.slug}/buy`}
+                      className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-bold py-3 rounded-2xl hover:opacity-90 transition-all shadow-lg shadow-purple-500/20 group-hover:shadow-purple-500/40"
+                    >
+                      BOOK NOW
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Scroll hint */}
+          {filtered.length > 3 && (
+            <div className="flex justify-center mt-4 gap-1">
+              {filtered.slice(0, 5).map((_, i) => (
+                <div key={i} className={`w-2 h-2 rounded-full ${i === 0 ? "bg-purple-500" : "bg-white/20"}`} />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+
+      {/* Reviews */}
+      <section className="py-20 bg-gray-950">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl font-black text-white mb-3">
+              Reviews from our estimated loyal customers
+            </h2>
+            <p className="text-gray-500">What Kenyans are saying about Eventra</p>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {reviews.map((r, i) => (
+              <div
+                key={i}
+                className="bg-white/5 border border-white/10 rounded-3xl p-6 hover:border-purple-500/30 transition-all"
+              >
+                <div className="flex items-center gap-1 mb-4">
+                  {Array.from({ length: r.rating }).map((_, j) => (
+                    <Star key={j} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <p className="text-gray-300 text-sm leading-relaxed mb-5">
+                  &quot;{r.review}&quot;
+                </p>
+                <div className="border-t border-white/10 pt-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white text-sm font-bold">
+                      {r.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-white">{r.name}</p>
+                      <p className="text-xs text-gray-600">{r.event}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-900/50 to-blue-900/50" />
+        <div className="absolute inset-0" style={{
+          backgroundImage: "radial-gradient(circle at 50% 50%, rgba(124,58,237,0.1) 0%, transparent 70%)"
+        }} />
+        <div className="relative max-w-4xl mx-auto px-4 text-center">
+          <h2 className="text-4xl md:text-5xl font-black text-white mb-4">
+            Ready to experience
+            <br />
+            <em className="not-italic italic text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+              ***tickets***
+            </em>
+          </h2>
+          <p className="text-gray-400 text-lg mb-8 max-w-xl mx-auto">
+            Join thousands of Kenyans who use Eventra for seamless event experiences.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href="/events"
+              className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold px-8 py-4 rounded-2xl hover:opacity-90 transition shadow-2xl shadow-purple-500/30 text-base"
+            >
+              Browse events <ArrowRight className="w-5 h-5" />
+            </Link>
+            <Link
+              href="/auth/register"
+              className="inline-flex items-center justify-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-bold px-8 py-4 rounded-2xl hover:bg-white/20 transition text-base"
+            >
+              <User className="w-5 h-5" />
+              Create account
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 border-t border-white/10 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-4 gap-8 mb-10">
+            {/* Brand */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
+                  <Ticket className="w-4 h-4 text-white" />
+                </div>
+                <span className="font-black text-white text-lg">EVENTRA</span>
+              </div>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                Elevating your ticket experience, one epic moment at a time.
+              </p>
+            </div>
+
+            {/* Quick links */}
+            <div>
+              <p className="text-white font-bold mb-4 text-sm uppercase tracking-wider">Quick links</p>
+              <div className="space-y-2">
+                {[
+                  { label: "Home", href: "/" },
+                  { label: "Events", href: "/events" },
+                  { label: "Categories", href: "/categories" },
+                  { label: "Contact", href: "/contact" },
+                ].map((l) => (
+                  <Link key={l.label} href={l.href} className="block text-sm text-gray-600 hover:text-white transition-colors">
+                    {l.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Account */}
+            <div>
+              <p className="text-white font-bold mb-4 text-sm uppercase tracking-wider">Account</p>
+              <div className="space-y-2">
+                {[
+                  { label: "Sign in", href: "/auth/login" },
+                  { label: "Register", href: "/auth/register" },
+                  { label: "Find my ticket", href: "/ticket/lookup" },
+                  { label: "Submit complaint", href: "/complaints/new" },
+                ].map((l) => (
+                  <Link key={l.label} href={l.href} className="block text-sm text-gray-600 hover:text-white transition-colors">
+                    {l.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Contact */}
+            <div>
+              <p className="text-white font-bold mb-4 text-sm uppercase tracking-wider">Contact</p>
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600">📧 kisakalevi15@gmail.com</p>
+                <p className="text-sm text-gray-600">📱 +254 746484946</p>
+                <p className="text-sm text-gray-600">📍 Chuka, Kenya</p>
+              </div>
+              <Link
+                href="/auth/admin-login"
+                className="inline-block mt-4 text-xs text-gray-700 hover:text-gray-500 transition-colors"
+              >
+                Admin portal →
+              </Link>
+            </div>
+          </div>
+
+          <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-gray-600 text-sm">
+              © 2026 Eventra Ticketing. Built in Kenya for Kenya.
+            </p>
+            <div className="flex items-center gap-6">
+              <Link href="/privacy" className="text-xs text-gray-700 hover:text-gray-400 transition-colors">
+                Privacy Policy
+              </Link>
+              <Link href="/terms" className="text-xs text-gray-700 hover:text-gray-400 transition-colors">
+                Terms of Service
+              </Link>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -23,6 +23,8 @@ import {
 import Link from "next/link";
 import supabaseClient from "@/lib/supabaseClient";
 import { lazy, Suspense } from "react";
+import { StaffManagement } from "@/components/organizer/StaffManagement";
+import { PromotionsCenter } from "@/components/organizer/PromotionsCenter";
 
 const ResponsiveContainer = lazy(() =>
   import("recharts").then((m) => ({ default: m.ResponsiveContainer })),
@@ -55,7 +57,7 @@ interface Event {
   orders: { total: number }[];
 }
 
-type Tab = "overview" | "events" | "analytics" | "complaints" | "settings";
+type Tab = "overview" | "events" | "analytics" | "complaints" | "staff" | "promotions" | "settings";
 
 type SessionUser = {
   name?: string | null;
@@ -66,6 +68,7 @@ type SessionUser = {
 const tabConfig: Record<Tab, { title: string; subtitle: string }> = {
   overview: { title: "Dashboard", subtitle: "Your events and performance" },
   events: { title: "My Events", subtitle: "Manage your events" },
+  staff: { title: "Staff Management", subtitle: "Manage your event staff" },
   analytics: {
     title: "Analytics",
     subtitle: "Event performance and ticket trends",
@@ -74,6 +77,7 @@ const tabConfig: Record<Tab, { title: string; subtitle: string }> = {
     title: "Attendee Issues",
     subtitle: "Handle and resolve attendee complaints",
   },
+  promotions: { title: "Promotions", subtitle: "Boost your event visibility" },
   settings: { title: "Settings", subtitle: "Account and event preferences" },
 };
 
@@ -763,6 +767,16 @@ export default function OrganizerDashboard() {
                       )}
                     </div>
                   </div>
+                )}
+
+                {/* Staff tab */}
+                {activeTab === "staff" && (
+                  <StaffManagement />
+                )}
+
+                {/* Promotions tab */}
+                {activeTab === "promotions" && (
+                  <PromotionsCenter />
                 )}
 
                 {/* Analytics tab */}

@@ -1,12 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Ticket, Eye, EyeOff, LogIn } from "lucide-react";
+import {
+  Ticket, Eye, EyeOff, LogIn,
+  Mail, Lock, AlertCircle, Shield
+} from "lucide-react";
 
-export default function OrganizerLoginPage() {
+type SessionUser = {
+  role?: string;
+  subscriptionStatus?: string;
+};
+
+const ROLE_ROUTES: Record<string, string> = {
+  ADMIN: "/dashboard/admin",
+  ORGANIZER: "/dashboard/organizer",
+  USER: "/",
+};
+
+const BLOCKED_STATUSES = ["PENDING", "REJECTED"];
+
+const STATUS_MESSAGES: Record<string, string> = {
+  PENDING: "Your organizer account is pending approval. Please wait for admin review.",
+  REJECTED: "Your organizer application was rejected. Please contact support.",
+};
+
+export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -18,97 +40,133 @@ export default function OrganizerLoginPage() {
     setLoading(true);
     setError("");
 
-    const { signIn } = await import("next-auth/react");
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    const redirectTo = searchParams?.get("redirect") || "";
 
-    if (res?.error) {
-      setError("Invalid email or password");
+    try {
+      const { signIn } = await import("next-auth/react");
+      const res = await signIn("credentials", {
+        email: email.toLowerCase().trim(),
+        password,
+        redirect: false,
+      });
+
+      if (res?.error) {
+        setError("Invalid email or password. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      const sessionRes = await fetch("/api/auth/session");
+      const sessionData = await sessionRes.json();
+      const user = sessionData?.user as SessionUser;
+      const role = user?.role;
+      const subStatus = user?.subscriptionStatus;
+
+      if (!role) {
+        setError("Could not verify your account. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      if (
+        role === "ORGANIZER" &&
+        subStatus &&
+        BLOCKED_STATUSES.includes(subStatus)
+      ) {
+        setError(STATUS_MESSAGES[subStatus] || "Account access denied.");
+        const { signOut } = await import("next-auth/react");
+        await signOut({ redirect: false });
+        setLoading(false);
+        return;
+      }
+
+      if (redirectTo) {
+        router.push(redirectTo);
+        router.refresh();
+        return;
+      }
+
+      const destination = ROLE_ROUTES[role] || "/";
+      router.push(destination);
+      router.refresh();
+    } catch {
+      setError("Something went wrong. Please try again.");
       setLoading(false);
-      return;
     }
-
-    const sessionRes = await fetch("/api/auth/session");
-    const sessionData = await sessionRes.json();
-    const role = (sessionData?.user as { role?: string })?.role;
-
-    if (role === "ADMIN") {
-      router.push("/dashboard/admin");
-    } else if (role === "ORGANIZER") {
-      router.push("/dashboard/organizer");
-    } else {
-      setError("Account not authorized as organizer");
-      setLoading(false);
-      return;
-    }
-
-    router.refresh();
-    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen page-bg text-slate-200 flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="text-left mb-6">
-          <Link href="/" className="text-sm text-slate-400 hover:text-slate-200 inline-flex items-center gap-1">
-            ← Back to home
-          </Link>
-        </div>
+    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center px-4 relative overflow-hidden">
+
+      {/* Background glow */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="w-full max-w-md relative z-10">
+
+        {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center shadow-lg">
-              <Ticket className="w-5 h-5 text-white" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-2xl shadow-purple-500/30">
+              <Ticket className="w-6 h-6 text-white" />
             </div>
-            <span className="font-bold text-2xl text-white">Eventra</span>
+            <span className="font-black text-2xl text-white tracking-tight">
+              EVENTRA
+            </span>
           </Link>
-          <h1 className="text-2xl font-bold text-white">Organizer sign in</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Sign in to manage your events
+          <h1 className="text-2xl font-black text-white mb-1">
+            Welcome back
+          </h1>
+          <p className="text-gray-500 text-sm">
+            Sign in to your account — all roles use this form
           </p>
         </div>
 
-        <div className="surface-card p-8 shadow-xl shadow-slate-900/20">
+        {/* Card */}
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
+
           {error && (
-            <div className="mb-5 p-4 bg-red-900/60 border border-red-700/50 rounded-xl">
-              <p className="text-sm text-red-100 font-medium">{error}</p>
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-300 leading-relaxed">{error}</p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
+              <label className="block text-sm font-semibold text-gray-300 mb-2">
                 Email address
               </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
-                required
-                className="input-field"
-              />
+              <div className="relative">
+                <Mail className="w-4 h-4 text-gray-600 absolute left-4 top-1/2 -translate-y-1/2" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  required
+                  className="w-full pl-11 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 focus:bg-white/8 transition-all text-sm"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
+              <label className="block text-sm font-semibold text-gray-300 mb-2">
                 Password
               </label>
               <div className="relative">
+                <Lock className="w-4 h-4 text-gray-600 absolute left-4 top-1/2 -translate-y-1/2" />
                 <input
                   type={showPw ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="input-field pr-12"
+                  className="w-full pl-11 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 focus:bg-white/8 transition-all text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPw(!showPw)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-300 transition-colors"
                 >
                   {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -118,7 +176,7 @@ export default function OrganizerLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary flex items-center justify-center gap-2 py-3.5 text-base disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white py-4 rounded-2xl text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/20 mt-2"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -128,26 +186,51 @@ export default function OrganizerLoginPage() {
               {loading ? "Signing in..." : "Sign in"}
             </button>
           </form>
+
+          {/* Role hint */}
+          <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-2xl">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Shield className="w-3.5 h-3.5" />
+              Auto-redirects based on your role
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { role: "Overseer", color: "text-red-400" },
+                { role: "Admin", color: "text-orange-400" },
+                { role: "Organizer", color: "text-purple-400" },
+                { role: "Customer", color: "text-blue-400" },
+                { role: "Gate Keeper", color: "text-green-400" },
+                { role: "Logistics", color: "text-teal-400" },
+              ].map((r) => (
+                <div key={r.role} className="flex items-center gap-1.5">
+                  <div className={`w-1.5 h-1.5 rounded-full bg-current ${r.color}`} />
+                  <span className={`text-xs ${r.color}`}>{r.role}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="mt-6 space-y-3">
-          <div className="surface-card p-4 text-center">
-            <p className="text-xs text-slate-400">
-              Looking to buy tickets?{" "}
-              <Link href="/" className="text-purple-300 font-semibold hover:text-white hover:underline">
-                Browse events
-              </Link>
-              {" "}— no account needed
-            </p>
-          </div>
-          <div className="text-center">
+        {/* Links */}
+        <div className="mt-6 text-center space-y-3">
+          <p className="text-sm text-gray-600">
+            New to Eventra?{" "}
             <Link
-              href="/auth/admin-login"
-              className="text-xs text-slate-400 hover:text-slate-200"
+              href="/auth/register"
+              className="text-purple-400 font-semibold hover:text-purple-300 transition-colors"
             >
-              Admin portal →
+              Create account
             </Link>
-          </div>
+          </p>
+          <p className="text-xs text-gray-700">
+            Organizer pending approval?{" "}
+            <Link
+              href="/contact"
+              className="text-gray-500 hover:text-gray-400 transition-colors"
+            >
+              Contact us
+            </Link>
+          </p>
         </div>
       </div>
     </div>

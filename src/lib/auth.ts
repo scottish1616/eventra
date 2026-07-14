@@ -6,26 +6,13 @@ import { createClient } from "@supabase/supabase-js";
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }
 
-const nextAuthUrl = process.env.NEXTAUTH_URL ??
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
-if (nextAuthUrl) {
-  process.env.NEXTAUTH_URL = nextAuthUrl;
-}
-const nextAuthSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
-if (nextAuthSecret) {
-  process.env.NEXTAUTH_SECRET = nextAuthSecret;
-}
-
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: nextAuthSecret,
-  trustHost: true,
   session: { strategy: "jwt" },
   pages: { signIn: "/auth/login" },
-  debug: process.env.NODE_ENV !== "production",
   providers: [
     Credentials({
       credentials: {
@@ -38,7 +25,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const supabase = getSupabase();
           const { data, error } = await supabase
             .from("users")
-            .select("id, name, email, password, role")
+            .select("id, name, email, password, role, subscriptionStatus")
             .eq("email", (credentials.email as string).toLowerCase().trim())
             .single();
 
@@ -46,7 +33,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           const isValid = await compare(
             credentials.password as string,
-            data.password,
+            data.password
           );
           if (!isValid) return null;
 
@@ -55,6 +42,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: data.name,
             email: data.email,
             role: data.role,
+            subscriptionStatus: data.subscriptionStatus,
           };
         } catch {
           return null;
@@ -69,13 +57,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.name = user.name;
         token.email = user.email;
         token.role = (user as Record<string, unknown>).role as string;
+        token.subscriptionStatus = (user as Record<string, unknown>).subscriptionStatus as string;
       }
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.id as string;
+        (session.user as any).id = token.id;
         (session.user as any).role = token.role;
+        (session.user as any).subscriptionStatus = token.subscriptionStatus;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
       }

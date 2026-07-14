@@ -289,6 +289,31 @@ export async function POST(req: NextRequest) {
         .update({ soldCount: tt.soldCount + item.quantity })
         .eq("id", tt.id);
     }
+    // After issuing tickets, add loyalty points if user has account
+    const totalItems = validatedItems.reduce((sum, v) => sum + v.item.quantity, 0);
+    const { data: userRecord } = await supabase
+      .from("users")
+      .select("role, loyaltyPoints")
+      .eq("id", userId)
+      .single();
+
+    if (userRecord && ["CUSTOMER", "USER"].includes(userRecord.role)) {
+      const pointsToAdd = 5 * totalItems;
+      await supabase
+        .from("users")
+        .update({
+          loyaltyPoints: (userRecord.loyaltyPoints || 0) + pointsToAdd,
+        })
+        .eq("id", userId);
+
+      await supabase.from("loyalty_points").insert({
+        userId,
+        points: pointsToAdd,
+        reason: `Purchased ${totalItems} ticket${totalItems > 1 ? "s" : ""} for ${event.title}`,
+        eventId,
+      });
+    }
+
 
     return NextResponse.json({
       success: true,
