@@ -57,7 +57,7 @@ export async function PATCH(
 ) {
   try {
     const sessionUser = await getSessionUser();
-    if (!sessionUser || sessionUser.role !== "ADMIN") {
+    if (!sessionUser || (sessionUser.role !== "ADMIN" && sessionUser.role !== "OVERSEER")) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 },

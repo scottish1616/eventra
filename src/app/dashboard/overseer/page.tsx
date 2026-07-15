@@ -63,6 +63,8 @@ export default function OverseerDashboard() {
   const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [adminForm, setAdminForm] = useState({ name: "", email: "", password: "" });
   const [adminFormLoading, setAdminFormLoading] = useState(false);
+  const [heroImageLoading, setHeroImageLoading] = useState(false);
+  const [currentHeroImage, setCurrentHeroImage] = useState<any>(null);
   const [stats, setStats] = useState<PlatformStats>({
     totalRevenue: 0, subscriptionRevenue: 0,
     totalEvents: 0, publishedEvents: 0,
@@ -198,6 +200,52 @@ export default function OverseerDashboard() {
     );
   }, []);
 
+  const fetchHeroImage = useCallback(async () => {
+    try {
+      const res = await fetch("/api/site-assets/hero_background");
+      const data = await res.json();
+      if (data.success) {
+        setCurrentHeroImage(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "settings") {
+      fetchHeroImage();
+    }
+  }, [activeTab, fetchHeroImage]);
+
+  const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setHeroImageLoading(true);
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const res = await fetch("/api/site-assets/hero_background", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!data.success) {
+        toast.error(data.error || "Failed to upload image");
+      } else {
+        toast.success("Homepage image updated successfully!");
+        fetchHeroImage();
+      }
+    } catch (err) {
+      toast.error("Failed to upload image");
+    } finally {
+      setHeroImageLoading(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
   if (status === "loading" || (status === "authenticated" && !authChecked)) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -262,7 +310,16 @@ export default function OverseerDashboard() {
               <span className="relative z-10">{item.label}</span>
             </motion.button>
           ))}
+          {/* Content management — external page link */}
+          <a
+            href="/dashboard/content"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-gray-500 hover:text-gray-200 hover:bg-white/5"
+          >
+            <span>🖼️</span>
+            <span>Content</span>
+          </a>
         </nav>
+
 
         <div className="px-3 py-3 border-t border-gray-800">
           <div className="flex items-center gap-2.5 px-3 py-2 mb-1 rounded-xl bg-white/5">
@@ -332,6 +389,7 @@ export default function OverseerDashboard() {
                     onAdd={handleAddOrganizer}
                     onDelete={handleDeleteOrganizer}
                     onUpdateStatus={handleUpdateStatus}
+                    userRole={user?.role}
                   />
                 )}
 
@@ -486,10 +544,55 @@ export default function OverseerDashboard() {
                 )}
 
                 {activeTab === "settings" && (
-                  <div className="bg-gray-900 border border-gray-800 rounded-2xl p-16 text-center">
-                    <Settings className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-                    <p className="text-gray-300 font-semibold">Platform settings</p>
-                    <p className="text-gray-600 text-sm mt-2">Coming soon</p>
+                  <div className="space-y-6">
+                    <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="w-12 h-12 rounded-3xl bg-gray-800 flex items-center justify-center">
+                          <Settings className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-white">Platform Settings</p>
+                          <p className="text-gray-500 text-sm">Manage global configuration for the platform.</p>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-gray-800 pt-6 mt-6">
+                        <p className="text-sm font-semibold text-white">Homepage Appearance</p>
+                        <p className="text-gray-500 text-sm mt-1 mb-6">
+                          Set the background image for the homepage hero section. You can only change this once every 7 days.
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row gap-6 items-start">
+                          <div className="w-full sm:w-1/2 aspect-video bg-gray-950 border border-gray-800 rounded-2xl overflow-hidden relative">
+                            {currentHeroImage?.imageUrl ? (
+                              <img src={currentHeroImage.imageUrl} alt="Hero Background" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-600">
+                                <span className="text-2xl mb-2">🖼️</span>
+                                <span className="text-xs">No image set</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 space-y-4">
+                            {currentHeroImage?.updatedAt && (
+                              <p className="text-xs text-gray-400">
+                                Last updated: {new Date(currentHeroImage.updatedAt).toLocaleDateString()}
+                              </p>
+                            )}
+                            <label className="inline-flex items-center gap-2 bg-gradient-to-r from-red-600 to-orange-600 text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:opacity-90 transition cursor-pointer shadow-lg disabled:opacity-50">
+                              {heroImageLoading ? "Uploading..." : "Upload New Image"}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleHeroImageUpload}
+                                disabled={heroImageLoading}
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 

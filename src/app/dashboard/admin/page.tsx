@@ -84,6 +84,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const [profileData, setProfileData] = useState<any>(null);
+  const [heroImageLoading, setHeroImageLoading] = useState(false);
+  const [currentHeroImage, setCurrentHeroImage] = useState<any>(null);
 
   const user = session?.user as SessionUser | undefined;
 
@@ -246,6 +248,52 @@ export default function AdminDashboard() {
     [],
   );
 
+  const fetchHeroImage = useCallback(async () => {
+    try {
+      const res = await fetch("/api/site-assets/hero_background");
+      const data = await res.json();
+      if (data.success) {
+        setCurrentHeroImage(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "settings") {
+      fetchHeroImage();
+    }
+  }, [activeTab, fetchHeroImage]);
+
+  const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setHeroImageLoading(true);
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const res = await fetch("/api/site-assets/hero_background", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!data.success) {
+        toast.error(data.error || "Failed to upload image");
+      } else {
+        toast.success("Homepage image updated successfully!");
+        fetchHeroImage();
+      }
+    } catch (err) {
+      toast.error("Failed to upload image");
+    } finally {
+      setHeroImageLoading(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
   const pendingOrgsCount = organizers.filter(
     (o) => o.approvalStatus === "PENDING",
   ).length;
@@ -393,6 +441,7 @@ export default function AdminDashboard() {
                     onAdd={handleAddOrganizer}
                     onDelete={handleDeleteOrganizer}
                     onUpdateStatus={handleUpdateStatus}
+                    userRole={user?.role}
                   />
                 )}
 
@@ -405,7 +454,8 @@ export default function AdminDashboard() {
                 )}
 
                 {activeTab === "settings" && (
-                  <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+                  <div className="space-y-6">
+                    <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
                     <div className="space-y-6">
                       <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
                         <div className="flex items-center gap-3">
@@ -713,6 +763,44 @@ export default function AdminDashboard() {
                       </form>
                     </div>
                   </div>
+
+                  <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
+                    <p className="text-sm font-semibold text-white">Homepage Appearance</p>
+                    <p className="text-gray-500 text-sm mt-1 mb-6">
+                      Set the background image for the homepage hero section. You can only change this once every 7 days.
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row gap-6 items-start">
+                      <div className="w-full sm:w-1/2 aspect-video bg-gray-950 border border-gray-800 rounded-2xl overflow-hidden relative">
+                        {currentHeroImage?.imageUrl ? (
+                          <img src={currentHeroImage.imageUrl} alt="Hero Background" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-600">
+                            <span className="text-2xl mb-2">🖼️</span>
+                            <span className="text-xs">No image set</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-4">
+                        {currentHeroImage?.updatedAt && (
+                          <p className="text-xs text-gray-400">
+                            Last updated: {new Date(currentHeroImage.updatedAt).toLocaleDateString()}
+                          </p>
+                        )}
+                        <label className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:opacity-90 transition cursor-pointer shadow-lg disabled:opacity-50">
+                          {heroImageLoading ? "Uploading..." : "Upload New Image"}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleHeroImageUpload}
+                            disabled={heroImageLoading}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 )}
               </motion.div>
             </AnimatePresence>

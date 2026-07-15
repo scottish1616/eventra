@@ -331,8 +331,8 @@ export function ComplaintsCenter({ role }: Props) {
                       </span>
                     )}
                     {complaint.escalatedAt && (
-                      <span className="text-red-400 font-semibold">
-                        ⚠ Escalated
+                      <span className="text-red-400 font-semibold flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> Escalated
                       </span>
                     )}
                     <span className="ml-auto">

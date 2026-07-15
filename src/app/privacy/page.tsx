@@ -29,7 +29,7 @@ export default function PrivacyPage() {
     },
     {
       title: "Contact us",
-      content: "If you have questions about this privacy policy or our data practices, please contact us at admin@eventra.com or call +254 700 000 000.",
+      content: "If you have questions about this privacy policy or our data practices, please contact us at kisakalevi@gmail.com or call +254 746 484 946.",
     },
   ];
 

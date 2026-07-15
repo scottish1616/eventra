@@ -115,7 +115,7 @@ function LoginForm() {
             Welcome back
           </h1>
           <p className="text-gray-500 text-sm">
-            Sign in to your account — all roles use this form
+            Sign in to your account
           </p>
         </div>
 
@@ -185,28 +185,7 @@ function LoginForm() {
             </button>
           </form>
 
-          {/* Role hint */}
-          <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-2xl">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Shield className="w-3.5 h-3.5" />
-              Auto-redirects based on your role
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { role: "Overseer", color: "text-red-400" },
-                { role: "Admin", color: "text-orange-400" },
-                { role: "Organizer", color: "text-purple-400" },
-                { role: "Customer", color: "text-blue-400" },
-                { role: "Gate Keeper", color: "text-green-400" },
-                { role: "Logistics", color: "text-teal-400" },
-              ].map((r) => (
-                <div key={r.role} className="flex items-center gap-1.5">
-                  <div className={`w-1.5 h-1.5 rounded-full bg-current ${r.color}`} />
-                  <span className={`text-xs ${r.color}`}>{r.role}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+
         </div>
 
         {/* Links */}

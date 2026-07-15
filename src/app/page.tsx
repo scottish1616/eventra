@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   Search, MapPin, Calendar, Ticket,
   ChevronRight, Bell, User, Menu, X,
-  Star, ArrowRight, Zap, Shield, Clock
+  ArrowRight, Zap, Shield, Clock
 } from "lucide-react";
 
 interface Event {
@@ -26,6 +26,7 @@ export default function HomePage() {
   const [search, setSearch] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [ticketNumber, setTicketNumber] = useState("");
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,6 +34,12 @@ export default function HomePage() {
       .then((r) => r.json())
       .then((d) => { setEvents(d.data || []); setLoading(false); })
       .catch(() => setLoading(false));
+
+    // Load hero background from site assets
+    fetch("/api/site-assets/hero_background")
+      .then((r) => r.json())
+      .then((d) => { if (d.imageUrl) setHeroImageUrl(d.imageUrl); })
+      .catch(() => {}); // silently fall back to gradient
   }, []);
 
   const filtered = events.filter((e) =>
@@ -61,12 +68,7 @@ export default function HomePage() {
     }
   };
 
-  const reviews = [
-    { name: "James Mwangi", review: "Bought my ticket in under 2 minutes. The QR code worked perfectly at the gate.", rating: 5, event: "Nairobi Tech Summit" },
-    { name: "Grace Akinyi", review: "Best ticketing experience in Kenya. M-Pesa payment was instant.", rating: 5, event: "Mombasa Music Festival" },
-    { name: "David Kipchoge", review: "Simple, fast and no hustle. Will use Eventra for every event.", rating: 5, event: "Kisumu Startup Night" },
-    { name: "Sarah Wanjiru", review: "I loved how easy it was. Just my name and phone. Done.", rating: 5, event: "Nairobi Comedy Night" },
-  ];
+
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -168,7 +170,18 @@ export default function HomePage() {
 
         {/* Background */}
         <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-950 via-purple-950/30 to-gray-950" />
+          {/* Background image (dynamic) or fallback gradient */}
+          {heroImageUrl ? (
+            <div
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+              style={{ backgroundImage: `url(${heroImageUrl})` }}
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-950 via-purple-950/30 to-gray-950" />
+          )}
+          {/* Dark gradient overlay for readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-gray-950/70 via-gray-950/60 to-gray-950" />
+          {/* Ambient glow orbs */}
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-pulse" />
           <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-600/20 rounded-full blur-3xl animate-pulse delay-1000" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/5 rounded-full blur-3xl" />
@@ -274,19 +287,7 @@ export default function HomePage() {
             </button>
           </div>
 
-          {/* Stats */}
-          <div className="flex items-center justify-center gap-8 mt-12">
-            {[
-              { value: "10K+", label: "Tickets sold" },
-              { value: "500+", label: "Events hosted" },
-              { value: "98%", label: "Happy attendees" },
-            ].map((s) => (
-              <div key={s.label} className="text-center">
-                <p className="text-2xl font-black text-white">{s.value}</p>
-                <p className="text-xs text-gray-500">{s.label}</p>
-              </div>
-            ))}
-          </div>
+
         </div>
 
         {/* Scroll indicator */}
@@ -406,45 +407,7 @@ export default function HomePage() {
       </section>
 
 
-      {/* Reviews */}
-      <section className="py-20 bg-gray-950">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl font-black text-white mb-3">
-              Reviews from our estimated loyal customers
-            </h2>
-            <p className="text-gray-500">What Kenyans are saying about Eventra</p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {reviews.map((r, i) => (
-              <div
-                key={i}
-                className="bg-white/5 border border-white/10 rounded-3xl p-6 hover:border-purple-500/30 transition-all"
-              >
-                <div className="flex items-center gap-1 mb-4">
-                  {Array.from({ length: r.rating }).map((_, j) => (
-                    <Star key={j} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-gray-300 text-sm leading-relaxed mb-5">
-                  &quot;{r.review}&quot;
-                </p>
-                <div className="border-t border-white/10 pt-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white text-sm font-bold">
-                      {r.name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-white">{r.name}</p>
-                      <p className="text-xs text-gray-600">{r.event}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+
 
       {/* CTA */}
       <section className="py-20 relative overflow-hidden">
@@ -540,12 +503,6 @@ export default function HomePage() {
                 <p className="text-sm text-gray-600">📱 +254 746484946</p>
                 <p className="text-sm text-gray-600">📍 Chuka, Kenya</p>
               </div>
-              <Link
-                href="/auth/admin-login"
-                className="inline-block mt-4 text-xs text-gray-700 hover:text-gray-500 transition-colors"
-              >
-                Admin portal →
-              </Link>
             </div>
           </div>
 

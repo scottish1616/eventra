@@ -24,6 +24,7 @@ interface Props {
     id: string,
     status: Organizer["subscriptionStatus"],
   ) => Promise<void>;
+  userRole?: string;
 }
 
 const subStatusConfig = {
@@ -67,6 +68,7 @@ export function OrganizersTable({
   onAdd,
   onDelete,
   onUpdateStatus,
+  userRole,
 }: Props) {
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -174,13 +176,15 @@ export function OrganizersTable({
             </span>
           </div>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-all hover:shadow-lg hover:shadow-purple-500/20"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Add organizer
-        </button>
+        {userRole !== "OVERSEER" && (
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-all hover:shadow-lg hover:shadow-purple-500/20"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add organizer
+          </button>
+        )}
       </div>
 
       {/* Table */}
@@ -220,12 +224,14 @@ export function OrganizersTable({
                     <p className="text-gray-600 text-xs mt-1">
                       Create the first organizer account
                     </p>
-                    <button
-                      onClick={() => setShowModal(true)}
-                      className="mt-4 text-xs text-purple-400 hover:text-purple-300 font-semibold"
-                    >
-                      Add organizer →
-                    </button>
+                    {userRole !== "OVERSEER" && (
+                      <button
+                        onClick={() => setShowModal(true)}
+                        className="mt-4 text-xs text-purple-400 hover:text-purple-300 font-semibold"
+                      >
+                        Add organizer →
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -308,28 +314,30 @@ export function OrganizersTable({
                                 <XCircle className="w-3 h-3" /> Deactivate
                               </button>
                             )}
-                          {deleteConfirm === org.id ? (
-                            <div className="flex items-center gap-1">
+                          {userRole !== "OVERSEER" && (
+                            deleteConfirm === org.id ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleDelete(org.id)}
+                                  className="px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold rounded-lg transition-all"
+                                >
+                                  Confirm
+                                </button>
+                                <button
+                                  onClick={() => setDeleteConfirm(null)}
+                                  className="px-2 py-1.5 bg-gray-800 text-gray-400 text-xs rounded-lg hover:bg-gray-700 transition-all"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
                               <button
-                                onClick={() => handleDelete(org.id)}
-                                className="px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold rounded-lg transition-all"
+                                onClick={() => setDeleteConfirm(org.id)}
+                                className="p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                               >
-                                Confirm
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
-                              <button
-                                onClick={() => setDeleteConfirm(null)}
-                                className="px-2 py-1.5 bg-gray-800 text-gray-400 text-xs rounded-lg hover:bg-gray-700 transition-all"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setDeleteConfirm(org.id)}
-                              className="p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            )
                           )}
                         </div>
                       </td>

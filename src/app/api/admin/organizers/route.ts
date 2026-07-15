@@ -13,7 +13,7 @@ function getSupabase() {
 export async function GET() {
   try {
     const sessionUser = await getSessionUser();
-    if (!sessionUser || sessionUser.role !== "ADMIN") {
+    if (!sessionUser || (sessionUser.role !== "ADMIN" && sessionUser.role !== "OVERSEER")) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 },
