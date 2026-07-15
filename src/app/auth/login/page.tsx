@@ -81,14 +81,12 @@ function LoginForm() {
       }
 
       if (redirectTo) {
-        router.push(redirectTo);
-        router.refresh();
+        window.location.href = redirectTo;
         return;
       }
 
       const destination = ROLE_ROUTES[role] || "/";
-      router.push(destination);
-      router.refresh();
+      window.location.href = destination;
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);
