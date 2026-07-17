@@ -136,19 +136,27 @@ export default function NewEventPage() {
     setLoading(true);
 
     try {
-      let bannerUrl: string | null = null;
+      const formData = new FormData();
+      
+      // Add form fields
+      formData.append("title", form.title);
+      formData.append("description", form.description);
+      formData.append("date", form.date);
+      formData.append("endDate", form.endDate);
+      formData.append("location", form.location);
+      formData.append("venue", form.venue);
+      
+      // Add ticket types as JSON string
+      formData.append("ticketTypes", JSON.stringify(ticketTypes));
+      
+      // Add banner file if present
       if (bannerFile) {
-        bannerUrl = await uploadBanner();
+        formData.append("coverImage", bannerFile);
       }
 
       const res = await fetch("/api/events", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          bannerUrl,
-          ticketTypes,
-        }),
+        body: formData,
       });
 
       const json = await res.json();
