@@ -4,6 +4,8 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import toast from "react-hot-toast";
+import { Toaster } from "react-hot-toast";
 import {
   Upload, X, Plus, Minus,
   Calendar, MapPin, Ticket,
@@ -70,14 +72,24 @@ export default function NewEventPage() {
     try {
       const formData = new FormData();
       formData.append("file", bannerFile);
+
       const res = await fetch("/api/upload/banner", {
         method: "POST",
         body: formData,
       });
+
       const json = await res.json();
-      if (json.success) return json.url;
-      return null;
-    } catch {
+
+      if (!json.success) {
+        console.error("[Banner Upload] Failed:", json.error);
+        toast.error(`Banner upload failed: ${json.error}. Event will be created without banner.`);
+        return null;
+      }
+
+      return json.url as string;
+    } catch (err) {
+      console.error("[Banner Upload] Exception:", err);
+      toast.error("Banner upload failed. Event will be created without banner.");
       return null;
     } finally {
       setUploadingBanner(false);
@@ -147,6 +159,7 @@ export default function NewEventPage() {
         return;
       }
 
+      toast.success("Event created successfully!");
       router.push("/dashboard/organizer");
       router.refresh();
     } catch {
@@ -176,6 +189,9 @@ export default function NewEventPage() {
 
   return (
     <div className="min-h-screen bg-gray-950">
+      <Toaster position="top-right" toastOptions={{
+        style: { background: "#1f2937", color: "#f9fafb", border: "1px solid #374151", borderRadius: "12px" },
+      }} />
       {/* Navbar */}
       <nav className="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
