@@ -15,6 +15,7 @@ interface Event {
   date: string;
   location: string;
   slug: string;
+  bannerUrl: string | null;
   venue: string | null;
   ticketTypes: { price: number }[];
 }
@@ -350,21 +351,26 @@ export default function HomePage() {
                   key={event.id}
                   className="flex-shrink-0 w-72 bg-white/5 border border-white/10 rounded-3xl overflow-hidden hover:border-purple-500/50 hover:shadow-2xl hover:shadow-purple-500/10 transition-all duration-300 group snap-start"
                 >
-                  {/* Event image placeholder */}
-                  <div className="h-44 bg-gradient-to-br from-purple-900/50 to-blue-900/50 relative overflow-hidden">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <p className="text-5xl">🎉</p>
-                    </div>
-                    <div className="absolute top-3 right-3">
-                      <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full border border-white/20">
-                        LIVE
-                      </span>
-                    </div>
-                    <div className="absolute bottom-3 left-3">
-                      <span className="bg-purple-600/80 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full">
-                        {formatCurrency(minPrice(event.ticketTypes))}
-                      </span>
-                    </div>
+                  {/* Event banner */}
+                  <div className="h-44 relative overflow-hidden flex-shrink-0">
+                    {event.bannerUrl ? (
+                      <img
+                        src={event.bannerUrl}
+                        alt={event.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-purple-900/80 via-blue-900/80 to-indigo-900/80 flex items-center justify-center">
+                        <span className="text-5xl">🎪</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    <span className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1 rounded-full border border-white/30">
+                      LIVE
+                    </span>
+                    <span className="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-white/10">
+                      {formatCurrency(minPrice(event.ticketTypes))}
+                    </span>
                   </div>
 
                   <div className="p-5">

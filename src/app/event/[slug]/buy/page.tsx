@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle, Smartphone, Ticket, Shield } from "lucide-react";
+import { ArrowLeft, Calendar, CheckCircle, MapPin, Smartphone, Ticket, Shield } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -27,6 +27,7 @@ interface EventData {
   venue?: string;
   date?: string;
   endDate?: string;
+  bannerUrl: string | null;
   organizer?: {
     name?: string;
     organizationName?: string;
@@ -221,23 +222,36 @@ export default function EventBuyPage() {
         <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
           <section className="space-y-6">
             <div className="">
-              {/* Use Card variant for consistent morphism */}
-              <Card variant="glass" className="p-6">
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-3 text-sm text-white/70">
-                  <span>{formatDate(event?.date)}</span>
-                  <span>•</span>
-                  <span>{event?.venue || event?.location || "Online"}</span>
-                </div>
-                <h1 className="text-3xl font-semibold text-white">{event?.title}</h1>
-                <p className="text-sm text-white/70 leading-7">{event?.description || "Buy tickets for this event."}</p>
-                {event?.organizer?.name && (
-                  <p className="text-sm text-white/60">
-                    Hosted by {event.organizer.organizationName || event.organizer.name}
-                  </p>
+              <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-purple-600 to-blue-600">
+                {event?.bannerUrl && (
+                  <>
+                    <img
+                      src={event.bannerUrl}
+                      alt={event.title}
+                      className="absolute inset-0 w-full h-full object-cover opacity-30"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-900/80 to-blue-900/80" />
+                  </>
                 )}
+                <div className="relative z-10 p-6 text-white">
+                  <h1 className="text-2xl md:text-3xl font-bold mb-3">{event?.title}</h1>
+                  <div className="flex flex-wrap gap-4 text-sm text-purple-100">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4" />
+                      {formatDate(event?.date)}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4" />
+                      {event?.location}{event?.venue ? ` · ${event.venue}` : ""}
+                    </div>
+                  </div>
+                  {event?.description && (
+                    <p className="mt-3 text-purple-100 text-sm leading-relaxed line-clamp-2">
+                      {event.description}
+                    </p>
+                  )}
+                </div>
               </div>
-              </Card>
             </div>
 
             <div>

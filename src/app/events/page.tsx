@@ -15,6 +15,7 @@ interface Event {
   location: string;
   venue: string | null;
   slug: string;
+  bannerUrl: string | null;
   status: string;
   description: string | null;
   ticketTypes: { price: number; name: string; category: string; totalSlots: number; soldCount: number }[];
@@ -362,11 +363,19 @@ export default function EventsPage() {
                   className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden hover:border-purple-500/40 hover:shadow-2xl hover:shadow-purple-500/10 transition-all duration-300 group flex flex-col"
                 >
                   {/* Image */}
-                  <div className="h-48 bg-gradient-to-br from-purple-900/60 to-blue-900/60 relative overflow-hidden flex-shrink-0">
-                    <div className="absolute inset-0 flex items-center justify-center text-6xl opacity-50">
-                      🎪
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <div className="h-48 relative overflow-hidden flex-shrink-0">
+                    {event.bannerUrl ? (
+                      <img
+                        src={event.bannerUrl}
+                        alt={event.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-purple-900/80 via-blue-900/80 to-indigo-900/80 flex items-center justify-center">
+                        <span className="text-6xl opacity-60">🎪</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
 
                     {/* Badges */}
                     <div className="absolute top-3 left-3 flex gap-2">
@@ -388,13 +397,13 @@ export default function EventsPage() {
                     </div>
 
                     <div className="absolute top-3 right-3">
-                      <span className="bg-black/40 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-full border border-white/20">
+                      <span className="bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-full border border-white/20">
                         {formatCurrency(price)}
                       </span>
                     </div>
 
                     {/* Date overlay */}
-                    <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm rounded-xl px-3 py-1.5 border border-white/10">
+                    <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm rounded-xl px-3 py-1.5 border border-white/10">
                       <p className="text-xs font-bold text-white">{formatDate(event.date)}</p>
                       <p className="text-xs text-gray-300">{formatTime(event.date)}</p>
                     </div>

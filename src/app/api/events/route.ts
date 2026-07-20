@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
 
       const { data: events, error } = await supabase
         .from("events")
-        .select("*, ticket_types(*), tickets(id), orders(id,total)")
+        .select("*, ticket_types(*), tickets(id), orders(id,total), bannerUrl")
         .eq("organizerId", user.id)
         .order("date", { ascending: true });
 
@@ -126,7 +126,7 @@ export async function GET(req: NextRequest) {
 
     let query = supabase
       .from("events")
-      .select("*, ticket_types(*)")
+      .select("*, ticket_types(*), bannerUrl")
       .eq("status", "PUBLISHED")
       .order("date", { ascending: true });
 
@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
     }
 
     const { data: events, error } = await query.select(
-      "*, ticket_types(*), tickets(id), orders(id,total)"
+      "*, ticket_types(*), tickets(id), orders(id,total), bannerUrl"
     );
 
     if (error) {
