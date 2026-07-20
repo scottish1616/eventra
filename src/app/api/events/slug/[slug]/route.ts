@@ -46,6 +46,7 @@ export async function GET(
       success: true,
       data: {
         ...event,
+        bannerUrl: event.bannerUrl || event.coverImage || null,
         ticketTypes: ticketTypes || [],
         organizer: organizer || null,
       },

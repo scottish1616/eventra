@@ -110,8 +110,10 @@ export async function GET(req: NextRequest) {
         success: true,
         data: (events || []).map((e) => {
           const { tickets, ticket_types, orders, ...rest } = e as any;
+          const bannerUrl = rest.bannerUrl || rest.coverImage || null;
           return {
             ...rest,
+            bannerUrl,
             ticketTypes: ticket_types || [],
             organizer: null,
             _count: {
@@ -151,8 +153,10 @@ export async function GET(req: NextRequest) {
       success: true,
       data: (events || []).map((e) => {
         const { tickets, ticket_types, orders, ...rest } = e as any;
+        const bannerUrl = rest.bannerUrl || rest.coverImage || null;
         return {
           ...rest,
+          bannerUrl,
           ticketTypes: ticket_types || [],
           organizer: null,
           _count: {
