@@ -37,24 +37,54 @@ export async function GET(
       );
     }
 
-    const { data: event } = await supabase
-      .from("events")
-      .select("title, date, location, venue")
-      .eq("id", ticket.eventId)
-      .single();
+    const [eventRes, ticketTypeRes, orderRes] = await Promise.all([
+      supabase
+        .from("events")
+        .select(
+          "id, title, date, endDate, location, venue, description, bannerUrl, organizerId"
+        )
+        .eq("id", ticket.eventId)
+        .single(),
+      supabase
+        .from("ticket_types")
+        .select("name, price, category, description")
+        .eq("id", ticket.ticketTypeId)
+        .single(),
+      ticket.orderId
+        ? supabase
+            .from("orders")
+            .select("buyerPhone")
+            .eq("id", ticket.orderId)
+            .single()
+        : Promise.resolve({ data: null }),
+    ]);
 
-    const { data: ticketType } = await supabase
-      .from("ticket_types")
-      .select("name, price, category")
-      .eq("id", ticket.ticketTypeId)
-      .single();
+    console.log("[Ticket API] Event data:", JSON.stringify(eventRes.data));
+    console.log("[Ticket API] Banner URL:", eventRes.data?.bannerUrl);
+
+    let organizer = null;
+    if (eventRes.data?.organizerId) {
+      const { data: org } = await supabase
+        .from("users")
+        .select("name, organizationName")
+        .eq("id", eventRes.data.organizerId)
+        .single();
+      organizer = org;
+    }
 
     return NextResponse.json({
       success: true,
       data: {
         ...ticket,
-        event: event || null,
-        ticketType: ticketType || null,
+        event: eventRes.data
+          ? {
+              ...eventRes.data,
+              bannerUrl: eventRes.data.bannerUrl || null,
+              organizer,
+            }
+          : null,
+        ticketType: ticketTypeRes.data || null,
+        order: orderRes.data || null,
       },
     });
   } catch (error) {
