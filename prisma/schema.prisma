@@ -5,12 +5,20 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
+  OVERSEER
   ADMIN
   ORGANIZER
   USER
+}
+
+enum OrganizerApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum EventStatus {
@@ -47,23 +55,28 @@ enum PaymentMethod {
 }
 
 model User {
-  id               String    @id @default(cuid())
-  name             String
-  email            String    @unique
-  emailVerified    DateTime?
-  password         String?
-  image            String?
-  role             UserRole  @default(USER)
-  phone            String?
-  organizationName String?
-  organizationLogo String?
-  stripeAccountId  String?
-  mpesaPaybill     String?
-  eventsCreated    Event[]   @relation("OrganizerEvents")
-  orders           Order[]
-  tickets          Ticket[]
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  name                 String
+  email                String    @unique
+  emailVerified        DateTime?
+  password             String?
+  image                String?
+  bio                  String?
+  role                 UserRole  @default(USER)
+  phone                String?
+  organizationName     String?
+  organizationLogo     String?
+  stripeAccountId      String?
+  mpesaPaybill         String?
+  approvalStatus       OrganizerApprovalStatus @default(PENDING)
+  approvedBy           String?
+  approvedAt           DateTime?
+  rejectionReason      String?
+  eventsCreated        Event[]   @relation("OrganizerEvents")
+  orders               Order[]
+  tickets              Ticket[]
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   @@map("users")
 }
@@ -216,4 +229,16 @@ model CommissionRule {
   updatedAt      DateTime @updatedAt
 
   @@map("commission_rules")
+}
+
+model SiteAsset {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  imageUrl  String
+  updatedBy String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("site_assets")
 }

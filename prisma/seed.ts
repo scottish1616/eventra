@@ -1,5 +1,29 @@
 import { PrismaClient } from "@prisma/client";
 import { hash } from "bcryptjs";
+import fs from "fs";
+import path from "path";
+
+// Load .env into process.env if present (lightweight alternative to dotenv)
+try {
+  const envPath = path.resolve(process.cwd(), ".env");
+  if (fs.existsSync(envPath)) {
+    const env = fs.readFileSync(envPath, "utf8");
+    env.split(/\r?\n/).forEach((line) => {
+      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!m) return;
+      const key = m[1];
+      let val = m[2] || "";
+      if (val.startsWith('"') && val.endsWith('"')) {
+        val = val.slice(1, -1);
+      }
+      if (process.env[key] === undefined) {
+        process.env[key] = val;
+      }
+    });
+  }
+} catch (e) {
+  // ignore — seed can still run if env vars are provided externally
+}
 
 const prisma = new PrismaClient();
 
@@ -11,22 +35,32 @@ async function main() {
   const userPassword = await hash("user123456", 12);
 
   const admin = await prisma.user.upsert({
-    where: { email: "admin@eventra.app" },
-    update: {},
+    where: { email: "admin@gmail.com" },
+    update: {
+      name: "Super Admin",
+      password: adminPassword,
+      role: "ADMIN",
+    },
     create: {
       name: "Super Admin",
-      email: "admin@eventra.app",
+      email: "admin@gmail.com",
       password: adminPassword,
       role: "ADMIN",
     },
   });
 
   const organizer1 = await prisma.user.upsert({
-    where: { email: "organizer@eventra.app" },
-    update: {},
+    where: { email: "organizer@gmail.com" },
+    update: {
+      name: "Jane Wanjiru",
+      password: orgPassword,
+      role: "ORGANIZER",
+      organizationName: "Nairobi Events Co.",
+      phone: "0712345678",
+    },
     create: {
       name: "Jane Wanjiru",
-      email: "organizer@eventra.app",
+      email: "organizer@gmail.com",
       password: orgPassword,
       role: "ORGANIZER",
       organizationName: "Nairobi Events Co.",
@@ -35,11 +69,17 @@ async function main() {
   });
 
   const organizer2 = await prisma.user.upsert({
-    where: { email: "organizer2@eventra.app" },
-    update: {},
+    where: { email: "organizer2@gmail.com" },
+    update: {
+      name: "Brian Omondi",
+      password: orgPassword,
+      role: "ORGANIZER",
+      organizationName: "Mombasa Vibes Ltd",
+      phone: "0722345678",
+    },
     create: {
       name: "Brian Omondi",
-      email: "organizer2@eventra.app",
+      email: "organizer2@gmail.com",
       password: orgPassword,
       role: "ORGANIZER",
       organizationName: "Mombasa Vibes Ltd",
@@ -48,17 +88,28 @@ async function main() {
   });
 
   const user1 = await prisma.user.upsert({
-    where: { email: "user@eventra.app" },
-    update: {},
+    where: { email: "user@gmail.com" },
+    update: {
+      name: "John Kamau",
+      password: userPassword,
+      role: "USER",
+      phone: "0733345678",
+    },
     create: {
       name: "John Kamau",
-      email: "user@eventra.app",
+      email: "user@gmail.com",
       password: userPassword,
       role: "USER",
       phone: "0733345678",
     },
   });
 
+  // Delete in dependency order to avoid FK constraints
+  await prisma.ticket.deleteMany({});
+  await prisma.orderItem.deleteMany({});
+  await prisma.payment.deleteMany({});
+  await prisma.order.deleteMany({});
+  await prisma.ticketType.deleteMany({});
   await prisma.event.deleteMany({});
   await prisma.commissionRule.deleteMany({});
 
@@ -184,10 +235,10 @@ async function main() {
   });
 
   console.log("Seeded successfully:");
-  console.log("  Admin:      admin@eventra.app / admin123456");
-  console.log("  Organizer:  organizer@eventra.app / organizer123");
-  console.log("  Organizer2: organizer2@eventra.app / organizer123");
-  console.log("  User:       user@eventra.app / user123456");
+  console.log("  Admin:      admin@gmail.com / admin123456");
+  console.log("  Organizer:  organizer@gmail.com / organizer123");
+  console.log("  Organizer2: organizer2@gmail.com / organizer123");
+  console.log("  User:       user@gmail.com / user123456");
   console.log("  Events:     3 published events created");
 }
 
