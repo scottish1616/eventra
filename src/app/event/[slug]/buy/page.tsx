@@ -40,7 +40,7 @@ type PaymentMethod = "MPESA" | "SIMULATED";
 export default function EventBuyPage() {
   const params = useParams();
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const slug = params?.slug as string | undefined;
 
   const [event, setEvent] = useState<EventData | null>(null);
@@ -58,6 +58,13 @@ export default function EventBuyPage() {
     if (!slug) {
       setError("Invalid event slug.");
       setLoading(false);
+      return;
+    }
+
+    if (status === "loading") return;
+
+    if (!session?.user) {
+      router.replace(`/auth/login?redirect=/event/${slug}/buy`);
       return;
     }
 
@@ -80,7 +87,7 @@ export default function EventBuyPage() {
     };
 
     fetchEvent();
-  }, [slug]);
+  }, [slug, router, session?.user, status]);
 
   const ticketTypes = event?.ticketTypes || [];
 
@@ -102,6 +109,10 @@ export default function EventBuyPage() {
       minimumFractionDigits: 0,
     }).format(amount);
 
+  const redirectToLogin = () => {
+    router.push(`/auth/login?redirect=/event/${slug}/buy`);
+  };
+
   const formatDate = (date?: string) =>
     date
       ? new Date(date).toLocaleDateString("en-KE", {
@@ -120,6 +131,14 @@ export default function EventBuyPage() {
 
   const handlePurchase = async () => {
     if (!event) return;
+    if (status === "loading") return;
+
+    if (!session?.user) {
+      const redirectTo = `/auth/login?redirect=/event/${slug}/buy`;
+      router.push(redirectTo);
+      return;
+    }
+
     if (totalItems === 0) {
       setError("Select at least one ticket.");
       return;
