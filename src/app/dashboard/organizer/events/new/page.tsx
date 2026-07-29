@@ -4,12 +4,11 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import toast from "react-hot-toast";
-import { Toaster } from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
 import {
-  Upload, X, Plus, Minus,
-  Calendar, MapPin, Ticket,
-  Image as ImageIcon, ArrowLeft
+  Upload, X, Plus, Calendar,
+  MapPin, Ticket, ImageIcon, ArrowLeft,
+  CheckCircle
 } from "lucide-react";
 
 interface TicketTypeForm {
@@ -28,8 +27,9 @@ export default function NewEventPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
-  const [bannerFile, setBannerFile] = useState<File | null>(null);
-  const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [bannerBase64, setBannerBase64] = useState<string | null>(null);
+  const [bannerMimeType, setBannerMimeType] = useState<string>("image/jpeg");
+  const [bannerFileName, setBannerFileName] = useState<string>("");
 
   const [form, setForm] = useState({
     title: "",
@@ -56,44 +56,27 @@ export default function NewEventPage() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      setError("Banner image must be under 5MB");
+      toast.error("Banner image must be under 5MB");
       return;
     }
 
-    setBannerFile(file);
-    const reader = new FileReader();
-    reader.onload = () => setBannerPreview(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const uploadBanner = async (): Promise<string | null> => {
-    if (!bannerFile) return null;
-    setUploadingBanner(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", bannerFile);
-
-      const res = await fetch("/api/upload/banner", {
-        method: "POST",
-        body: formData,
-      });
-
-      const json = await res.json();
-
-      if (!json.success) {
-        console.error("[Banner Upload] Failed:", json.error);
-        toast.error(`Banner upload failed: ${json.error}. Event will be created without banner.`);
-        return null;
-      }
-
-      return json.url as string;
-    } catch (err) {
-      console.error("[Banner Upload] Exception:", err);
-      toast.error("Banner upload failed. Event will be created without banner.");
-      return null;
-    } finally {
-      setUploadingBanner(false);
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) {
+      toast.error("Only JPG, PNG, WebP and GIF allowed");
+      return;
     }
+
+    setBannerMimeType(file.type);
+    setBannerFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      setBannerPreview(result);
+      const base64 = result.split(",")[1];
+      setBannerBase64(base64);
+    };
+    reader.readAsDataURL(file);
   };
 
   const addTicketType = () => {
@@ -136,27 +119,16 @@ export default function NewEventPage() {
     setLoading(true);
 
     try {
-      const formData = new FormData();
-      
-      // Add form fields
-      formData.append("title", form.title);
-      formData.append("description", form.description);
-      formData.append("date", form.date);
-      formData.append("endDate", form.endDate);
-      formData.append("location", form.location);
-      formData.append("venue", form.venue);
-      
-      // Add ticket types as JSON string
-      formData.append("ticketTypes", JSON.stringify(ticketTypes));
-      
-      // Add banner file if present
-      if (bannerFile) {
-        formData.append("coverImage", bannerFile);
-      }
-
       const res = await fetch("/api/events", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          bannerBase64: bannerBase64 || null,
+          bannerMimeType: bannerMimeType || null,
+          bannerFileName: bannerFileName || null,
+          ticketTypes,
+        }),
       });
 
       const json = await res.json();
@@ -168,8 +140,10 @@ export default function NewEventPage() {
       }
 
       toast.success("Event created successfully!");
-      router.push("/dashboard/organizer");
-      router.refresh();
+      setTimeout(() => {
+        router.push("/dashboard/organizer");
+        router.refresh();
+      }, 1000);
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);
@@ -200,7 +174,7 @@ export default function NewEventPage() {
       <Toaster position="top-right" toastOptions={{
         style: { background: "#1f2937", color: "#f9fafb", border: "1px solid #374151", borderRadius: "12px" },
       }} />
-      {/* Navbar */}
+
       <nav className="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
@@ -229,12 +203,12 @@ export default function NewEventPage() {
           {/* Banner upload */}
           <div className="bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-800">
-              <h2 className="font-bold text-white flex items-center gap-2">
+              <h2 className="font-bold text-white flex items-center gap-2 text-sm">
                 <ImageIcon className="w-4 h-4 text-purple-400" />
                 Event banner
               </h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                This will appear on your ticket and event page
+                Upload an image — it will appear on the ticket and event page
               </p>
             </div>
 
@@ -244,19 +218,25 @@ export default function NewEventPage() {
                   <img
                     src={bannerPreview}
                     alt="Banner preview"
-                    className="w-full h-48 object-cover"
+                    className="w-full h-52 object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   <button
                     type="button"
-                    onClick={() => { setBannerPreview(null); setBannerFile(null); }}
-                    className="absolute top-3 right-3 w-8 h-8 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-all"
+                    onClick={() => {
+                      setBannerPreview(null);
+                      setBannerBase64(null);
+                      setBannerFileName("");
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                    className="absolute top-3 right-3 w-8 h-8 bg-black/70 hover:bg-black/90 rounded-full flex items-center justify-center text-white transition-all"
                   >
                     <X className="w-4 h-4" />
                   </button>
-                  <div className="absolute bottom-3 left-3">
-                    <span className="bg-green-500/80 text-white text-xs font-bold px-3 py-1 rounded-full">
-                      Banner selected
+                  <div className="absolute bottom-3 left-3 flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-400" />
+                    <span className="text-white text-xs font-bold bg-green-500/80 px-2.5 py-1 rounded-full">
+                      Banner ready
                     </span>
                   </div>
                 </div>
@@ -264,7 +244,7 @@ export default function NewEventPage() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-48 border-2 border-dashed border-gray-700 rounded-2xl flex flex-col items-center justify-center hover:border-purple-500 hover:bg-purple-500/5 transition-all group"
+                  className="w-full h-52 border-2 border-dashed border-gray-700 rounded-2xl flex flex-col items-center justify-center hover:border-purple-500 hover:bg-purple-500/5 transition-all group cursor-pointer"
                 >
                   <div className="w-14 h-14 bg-gray-800 group-hover:bg-purple-500/20 rounded-2xl flex items-center justify-center mb-3 transition-all">
                     <Upload className="w-7 h-7 text-gray-600 group-hover:text-purple-400 transition-colors" />
@@ -273,14 +253,14 @@ export default function NewEventPage() {
                     Click to upload event banner
                   </p>
                   <p className="text-xs text-gray-600 mt-1">
-                    PNG, JPG up to 5MB · Recommended 1200×600px
+                    PNG, JPG, WebP · Max 5MB · Recommended 1200×600px
                   </p>
                 </button>
               )}
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp,image/gif"
                 onChange={handleBannerChange}
                 className="hidden"
               />
@@ -289,7 +269,7 @@ export default function NewEventPage() {
 
           {/* Event details */}
           <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
-            <h2 className="font-bold text-white mb-5 flex items-center gap-2">
+            <h2 className="font-bold text-white mb-5 flex items-center gap-2 text-sm">
               <Calendar className="w-4 h-4 text-purple-400" />
               Event details
             </h2>
@@ -303,7 +283,7 @@ export default function NewEventPage() {
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder="e.g. AfroBeats Live Concert"
                   required
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 text-sm transition-all"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 text-sm"
                 />
               </div>
 
@@ -316,7 +296,7 @@ export default function NewEventPage() {
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={3}
                   placeholder="Describe your event..."
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 text-sm transition-all resize-none"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 text-sm resize-none"
                 />
               </div>
 
@@ -330,7 +310,7 @@ export default function NewEventPage() {
                     value={form.date}
                     onChange={(e) => setForm({ ...form, date: e.target.value })}
                     required
-                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white focus:outline-none focus:border-purple-500 text-sm transition-all"
+                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white focus:outline-none focus:border-purple-500 text-sm"
                   />
                 </div>
                 <div>
@@ -341,7 +321,7 @@ export default function NewEventPage() {
                     type="datetime-local"
                     value={form.endDate}
                     onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white focus:outline-none focus:border-purple-500 text-sm transition-all"
+                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white focus:outline-none focus:border-purple-500 text-sm"
                   />
                 </div>
               </div>
@@ -358,7 +338,7 @@ export default function NewEventPage() {
                       onChange={(e) => setForm({ ...form, location: e.target.value })}
                       placeholder="e.g. Nairobi, Kenya"
                       required
-                      className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 text-sm transition-all"
+                      className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 text-sm"
                     />
                   </div>
                 </div>
@@ -370,7 +350,7 @@ export default function NewEventPage() {
                     value={form.venue}
                     onChange={(e) => setForm({ ...form, venue: e.target.value })}
                     placeholder="e.g. KICC, Uhuru Park"
-                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 text-sm transition-all"
+                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 text-sm"
                   />
                 </div>
               </div>
@@ -380,17 +360,17 @@ export default function NewEventPage() {
           {/* Ticket types */}
           <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="font-bold text-white flex items-center gap-2">
+              <h2 className="font-bold text-white flex items-center gap-2 text-sm">
                 <Ticket className="w-4 h-4 text-purple-400" />
                 Ticket types
               </h2>
               <button
                 type="button"
                 onClick={addTicketType}
-                className="flex items-center gap-1.5 text-xs text-purple-400 font-semibold hover:text-purple-300 transition-colors"
+                className="flex items-center gap-1.5 text-xs text-purple-400 font-semibold hover:text-purple-300"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Add ticket type
+                Add type
               </button>
             </div>
 
@@ -398,18 +378,14 @@ export default function NewEventPage() {
               {ticketTypes.map((tt, index) => (
                 <div
                   key={index}
-                  className={`border-2 rounded-2xl p-5 transition-all ${categoryColors[tt.category]}`}
+                  className={`border-2 rounded-2xl p-5 ${categoryColors[tt.category]}`}
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <select
                         value={tt.category}
                         onChange={(e) =>
-                          updateTicketType(
-                            index,
-                            "category",
-                            e.target.value as "REGULAR" | "VIP" | "VVIP"
-                          )
+                          updateTicketType(index, "category", e.target.value as "REGULAR" | "VIP" | "VVIP")
                         }
                         className="text-sm font-bold bg-transparent border-none focus:outline-none text-white cursor-pointer"
                       >
@@ -418,10 +394,8 @@ export default function NewEventPage() {
                         <option value="VVIP" className="bg-gray-900">VVIP</option>
                       </select>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                        tt.category === "VVIP"
-                          ? "bg-purple-500/20 text-purple-400"
-                          : tt.category === "VIP"
-                          ? "bg-amber-500/20 text-amber-400"
+                        tt.category === "VVIP" ? "bg-purple-500/20 text-purple-400"
+                          : tt.category === "VIP" ? "bg-amber-500/20 text-amber-400"
                           : "bg-blue-500/20 text-blue-400"
                       }`}>
                         {tt.category}
@@ -440,9 +414,7 @@ export default function NewEventPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                        Ticket name
-                      </label>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Ticket name *</label>
                       <input
                         value={tt.name}
                         onChange={(e) => updateTicketType(index, "name", e.target.value)}
@@ -452,60 +424,46 @@ export default function NewEventPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                        Price (KES)
-                      </label>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Price (KES) *</label>
                       <input
                         type="number"
                         min="0"
                         value={tt.price}
-                        onChange={(e) =>
-                          updateTicketType(index, "price", parseFloat(e.target.value) || 0)
-                        }
+                        onChange={(e) => updateTicketType(index, "price", parseFloat(e.target.value) || 0)}
                         placeholder="2500"
                         required
                         className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                        Total slots
-                      </label>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Total slots *</label>
                       <input
                         type="number"
                         min="1"
                         value={tt.totalSlots}
-                        onChange={(e) =>
-                          updateTicketType(index, "totalSlots", parseInt(e.target.value) || 1)
-                        }
+                        onChange={(e) => updateTicketType(index, "totalSlots", parseInt(e.target.value) || 1)}
                         required
                         className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                        Max per order
-                      </label>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Max per order</label>
                       <input
                         type="number"
                         min="1"
                         value={tt.maxPerOrder}
-                        onChange={(e) =>
-                          updateTicketType(index, "maxPerOrder", parseInt(e.target.value) || 10)
-                        }
+                        onChange={(e) => updateTicketType(index, "maxPerOrder", parseInt(e.target.value) || 10)}
                         className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500"
                       />
                     </div>
                   </div>
 
                   <div className="mt-3">
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                      Description (optional)
-                    </label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Description (optional)</label>
                     <input
                       value={tt.description}
                       onChange={(e) => updateTicketType(index, "description", e.target.value)}
-                      placeholder="What is included with this ticket?"
+                      placeholder="What is included?"
                       className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500"
                     />
                   </div>
@@ -529,19 +487,15 @@ export default function NewEventPage() {
             </Link>
             <button
               type="submit"
-              disabled={loading || uploadingBanner}
+              disabled={loading}
               className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white py-4 rounded-2xl text-sm font-bold hover:opacity-90 transition disabled:opacity-60 shadow-lg shadow-purple-500/20"
             >
-              {loading || uploadingBanner ? (
+              {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <Plus className="w-5 h-5" />
               )}
-              {uploadingBanner
-                ? "Uploading banner..."
-                : loading
-                ? "Creating event..."
-                : "Create event"}
+              {loading ? "Creating event..." : "Create event"}
             </button>
           </div>
         </form>
