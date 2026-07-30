@@ -21,11 +21,19 @@ export async function GET() {
 
     const supabase = getSupabase();
 
-    const { data: user } = await supabase
-      .from("users")
-      .select("id, loyaltyPoints")
-      .eq("email", sessionUser.email)
-      .single();
+    // Prefer lookup by session user id when available (more reliable), fall back to email
+    let userQuery = supabase.from("users").select("id, loyaltyPoints");
+    if (sessionUser.id) {
+      userQuery = userQuery.eq("id", sessionUser.id);
+    } else {
+      userQuery = userQuery.eq("email", sessionUser.email);
+    }
+
+    const { data: user, error: userError } = await userQuery.maybeSingle();
+
+    if (userError) {
+      console.error("[Customer Tickets] user lookup error:", userError);
+    }
 
     if (!user) {
       return NextResponse.json(
