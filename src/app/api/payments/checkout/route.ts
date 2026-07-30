@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
 import { createClient } from "@supabase/supabase-js";
-import { initiateStkPush, formatPhone } from "@/lib/mpesa";
 
 function getSupabase() {
   return createClient(
@@ -199,51 +198,27 @@ export async function POST(req: NextRequest) {
     }
 
     if (paymentMethod === "MPESA") {
-      try {
-        const cleanPhone = formatPhone(resolvedBuyerPhone);
+      // Defer actual M-Pesa STK integration to organizer-configured settings.
+      // Create a pending payment record and return awaitingPayment=true so
+      // the frontend can show a pending state. The organizer will later
+      // configure the exact flow (till/buygoods/paybill/etc.).
+      await supabase.from("payments").insert({
+        orderId: order.id,
+        amount: total,
+        method: "MPESA",
+        status: "PENDING",
+      });
 
-        const stkResult = await initiateStkPush({
-          phone: cleanPhone,
-          amount: total,
+      return NextResponse.json({
+        success: true,
+        data: {
           orderId: order.id,
-          description: `Ticket - ${event.title.substring(0, 13)}`,
-        });
-
-        await supabase.from("payments").insert({
-          orderId: order.id,
-          amount: total,
-          method: "MPESA",
-          status: "PENDING",
-          mpesaCheckoutRequestId: stkResult.CheckoutRequestID,
-        });
-
-        return NextResponse.json({
-          success: true,
-          data: {
-            orderId: order.id,
-            paymentMethod: "MPESA",
-            checkoutRequestId: stkResult.CheckoutRequestID,
-            message:
-              "M-Pesa prompt sent to your phone. Enter your PIN to complete payment.",
-            tickets: [],
-            awaitingPayment: true,
-          },
-        });
-      } catch (mpesaError) {
-        const msg =
-          mpesaError instanceof Error ? mpesaError.message : "M-Pesa error";
-        console.error("[M-Pesa STK Error]", msg);
-
-        await supabase.from("orders").delete().eq("id", order.id);
-
-        return NextResponse.json(
-          {
-            success: false,
-            error: `M-Pesa failed: ${msg}`,
-          },
-          { status: 500 }
-        );
-      }
+          paymentMethod: "MPESA",
+          message: "Payment recorded as pending; await organizer payment instructions.",
+          tickets: [],
+          awaitingPayment: true,
+        },
+      });
     }
 
     const ticketIds: string[] = [];
