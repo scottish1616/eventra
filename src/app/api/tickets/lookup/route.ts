@@ -22,13 +22,25 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabase();
 
-    const { data: ticket, error } = await supabase
+    const normalized = number.trim().toUpperCase();
+
+    const { data: tickets, error } = await supabase
       .from("tickets")
       .select("id, ticketNumber")
-      .ilike("ticketNumber", number.trim())
-      .single();
+      .or(`ticketNumber.ilike.%${normalized}%,ticketNumber.eq.${normalized}`)
+      .limit(10);
 
-    if (error || !ticket) {
+    if (error) {
+      console.error("[Ticket Lookup]", error);
+      return NextResponse.json(
+        { success: false, error: "Failed to lookup ticket" },
+        { status: 500 }
+      );
+    }
+
+    const ticket = tickets?.[0];
+
+    if (!ticket) {
       return NextResponse.json(
         { success: false, error: "Ticket not found. Check your ticket number and try again." },
         { status: 404 }

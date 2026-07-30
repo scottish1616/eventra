@@ -8,7 +8,7 @@ import { Toaster } from "react-hot-toast";
 import toast from "react-hot-toast";
 import {
   Ticket, CheckCircle, XCircle, Search,
-  QrCode, Users, LogOut, Shield, Clock
+  QrCode, Users, LogOut, Shield, Clock, RotateCcw
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 
@@ -94,10 +94,7 @@ export default function GatekeeperDashboard() {
     }
 
     try {
-      const res = await fetch(
-        `/api/tickets/checkin/${scannedTicket.id}`,
-        { method: "PATCH" }
-      );
+      const res = await fetch(`/api/tickets/checkin/${scannedTicket.id}`, { method: "PATCH" });
       const json = await res.json();
 
       if (json.success) {
@@ -118,6 +115,25 @@ export default function GatekeeperDashboard() {
       }
     } catch {
       toast.error("Check-in failed. Please try again.");
+    }
+  };
+
+  const handleVoidTicket = async () => {
+    if (!scannedTicket) return;
+
+    try {
+      const res = await fetch(`/api/tickets/${scannedTicket.id}/void`, { method: "PATCH" });
+      const json = await res.json();
+
+      if (json.success) {
+        const updated = { ...scannedTicket, isUsed: false };
+        setScannedTicket(updated);
+        toast.success("Ticket state reset to active.");
+      } else {
+        toast.error(json.error || "Could not reset ticket state");
+      }
+    } catch {
+      toast.error("Could not reset ticket state.");
     }
   };
 
@@ -288,26 +304,36 @@ export default function GatekeeperDashboard() {
                   ))}
                 </div>
 
-                {!scannedTicket.isUsed && (
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={handleCheckIn}
-                    className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-green-600 to-teal-600 text-white font-black py-4 rounded-2xl text-base hover:opacity-90 transition shadow-xl shadow-green-500/20"
-                  >
-                    <CheckCircle className="w-5 h-5" />
-                    CONFIRM CHECK-IN
-                  </motion.button>
-                )}
+                <div className="flex flex-col gap-3">
+                  {!scannedTicket.isUsed && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={handleCheckIn}
+                      className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-green-600 to-teal-600 text-white font-black py-4 rounded-2xl text-base hover:opacity-90 transition shadow-xl shadow-green-500/20"
+                    >
+                      <CheckCircle className="w-5 h-5" />
+                      CONFIRM CHECK-IN
+                    </motion.button>
+                  )}
 
-                {scannedTicket.isUsed && (
                   <button
-                    onClick={() => { setScannedTicket(null); setTicketInput(""); }}
-                    className="w-full py-3 bg-gray-800 text-gray-300 font-semibold rounded-2xl text-sm hover:bg-gray-700 transition"
+                    onClick={handleVoidTicket}
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold rounded-2xl text-sm hover:bg-amber-500/20 transition"
                   >
-                    Scan next ticket
+                    <RotateCcw className="w-4 h-4" />
+                    Reset ticket state
                   </button>
-                )}
+
+                  {scannedTicket.isUsed && (
+                    <button
+                      onClick={() => { setScannedTicket(null); setTicketInput(""); }}
+                      className="w-full py-3 bg-gray-800 text-gray-300 font-semibold rounded-2xl text-sm hover:bg-gray-700 transition"
+                    >
+                      Scan next ticket
+                    </button>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}

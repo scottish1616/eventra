@@ -6,7 +6,7 @@ import {
   Ticket, X, ChevronRight, LogOut,
   LayoutDashboard, Calendar, BarChart3,
   Users, MessageSquare, Settings, Plus,
-  Shield, Zap
+  Shield, Zap, History, CircleUserRound, Sparkles
 } from "lucide-react";
 
 interface NavItem {
@@ -16,7 +16,7 @@ interface NavItem {
 }
 
 interface Props {
-  role: "admin" | "organizer";
+  role: "admin" | "organizer" | "customer";
   activeTab: string;
   setActiveTab: (tab: string) => void;
   userName: string;
@@ -47,6 +47,14 @@ const organizerNav: NavItem[] = [
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
+const customerNav: NavItem[] = [
+  { id: "tickets", label: "My Tickets", icon: Ticket },
+  { id: "history", label: "History", icon: History },
+  { id: "reviews", label: "Reviews", icon: Sparkles },
+  { id: "loyalty", label: "Loyalty", icon: Zap },
+  { id: "profile", label: "Profile", icon: CircleUserRound },
+];
+
 export function Sidebar({
   role,
   activeTab,
@@ -59,8 +67,8 @@ export function Sidebar({
   badges = {},
   onCreateEvent,
 }: Props) {
-  const navItems = role === "admin" ? adminNav : organizerNav;
-  const gradient = role === "admin" ? "from-red-500 to-orange-500" : "from-purple-500 to-blue-500";
+  const navItems = role === "admin" ? adminNav : role === "organizer" ? organizerNav : customerNav;
+  const gradient = role === "admin" ? "from-red-500 to-orange-500" : role === "organizer" ? "from-purple-500 to-blue-500" : "from-fuchsia-500 to-violet-600";
 
   const SidebarInner = () => (
     <div className="flex flex-col h-full bg-gray-950">
@@ -150,7 +158,7 @@ export function Sidebar({
               <img src={userImage} alt={userName || "profile"} className="w-8 h-8 object-cover rounded-lg" />
             ) : (
               <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center text-white text-xs font-bold flex-shrink-0 cursor-pointer`}>
-                {userName.charAt(0).toUpperCase()}
+                {userName?.charAt(0).toUpperCase() || "U"}
               </div>
             )}
           </motion.div>
