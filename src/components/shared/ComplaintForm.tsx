@@ -8,6 +8,8 @@ interface ComplaintFormProps {
   organizerId?: string;
   eventName?: string;
   organizerName?: string;
+  isInternal?: boolean;
+  role?: string;
 }
 
 interface Organizer {
@@ -43,6 +45,8 @@ export function ComplaintForm({
   organizerId,
   eventName,
   organizerName,
+  isInternal = false,
+  role = "ATTENDEE",
 }: ComplaintFormProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -75,6 +79,10 @@ export function ComplaintForm({
     : [];
 
   useEffect(() => {
+    if (isInternal) {
+      setLoadingData(false);
+      return;
+    }
     const loadFormData = async () => {
       setLoadingData(true);
       try {
@@ -92,7 +100,7 @@ export function ComplaintForm({
     };
 
     loadFormData();
-  }, []);
+  }, [isInternal]);
 
   const handleOrganizerChange = (organizerId: string) => {
     const organizer = organizers.find((o) => o.id === organizerId);
@@ -147,16 +155,16 @@ export function ComplaintForm({
           complainantName: name.trim(),
           complainantPhone: phone.trim() || null,
           complainantEmail: email.trim() || null,
-          eventId: form.eventId || null,
-          organizerId: form.organizerId || null,
-          eventName:
-            selectedEvent?.title || eventNameInput.trim() || null,
-          organizerName:
+          eventId: isInternal ? null : (form.eventId || null),
+          organizerId: isInternal ? null : (form.organizerId || null),
+          eventName: isInternal ? null : (selectedEvent?.title || eventNameInput.trim() || null),
+          organizerName: isInternal ? null : (
             selectedOrganizer?.organizationName ||
             selectedOrganizer?.name ||
             organizerNameInput.trim() ||
-            null,
-          type: "ATTENDEE",
+            null
+          ),
+          type: isInternal ? role : "ATTENDEE",
           category,
           priority,
         }),
@@ -189,11 +197,11 @@ export function ComplaintForm({
   return (
     <div className="bg-gray-950 border border-gray-800 rounded-3xl p-8 shadow-xl shadow-black/10 max-w-3xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Report an issue</h1>
+        <h1 className="text-2xl font-bold text-white">{isInternal ? "Create Internal Complaint" : "Report an issue"}</h1>
         <p className="text-sm text-gray-400 mt-2">
-          Submit your attendee issue and it will be routed to the event
-          organizer. If the organizer escalates it, the admin will receive it
-          for resolution.
+          {isInternal
+            ? `Submit your complaint directly to the ${role === "ADMIN" ? "overseer" : "admin"}.`
+            : "Submit your attendee issue and it will be routed to the event organizer. If the organizer escalates it, the admin will receive it for resolution."}
         </p>
       </div>
 
@@ -262,56 +270,58 @@ export function ComplaintForm({
           </label>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <label className="block text-xs text-gray-300">
-            Organizer
-            <select
-              value={form.organizerId}
-              onChange={(e) => handleOrganizerChange(e.target.value)}
-              disabled={loadingData}
-              className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="">
-                {loadingData ? "Loading organizers..." : "Choose an organizer"}
-              </option>
-              {organizers.map((organizer) => (
-                <option key={organizer.id} value={organizer.id}>
-                  {organizer.organizationName || organizer.name}
+        {!isInternal && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="block text-xs text-gray-300">
+              Organizer
+              <select
+                value={form.organizerId}
+                onChange={(e) => handleOrganizerChange(e.target.value)}
+                disabled={loadingData}
+                className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">
+                  {loadingData ? "Loading organizers..." : "Choose an organizer"}
                 </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-xs text-gray-300">
-            Event
-            <select
-              value={form.eventId}
-              onChange={(e) => handleEventChange(e.target.value)}
-              disabled={loadingData || !form.organizerId}
-              className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="">
-                {loadingData
-                  ? "Loading events..."
-                  : form.organizerId
-                  ? "Select an event"
-                  : "Select an organizer first"}
-              </option>
-              {filteredEvents.map((eventOption) => (
-                <option key={eventOption.id} value={eventOption.id}>
-                  {eventOption.title}
+                {organizers.map((organizer) => (
+                  <option key={organizer.id} value={organizer.id}>
+                    {organizer.organizationName || organizer.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs text-gray-300">
+              Event
+              <select
+                value={form.eventId}
+                onChange={(e) => handleEventChange(e.target.value)}
+                disabled={loadingData || !form.organizerId}
+                className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-900 px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">
+                  {loadingData
+                    ? "Loading events..."
+                    : form.organizerId
+                    ? "Select an event"
+                    : "Select an organizer first"}
                 </option>
-              ))}
-            </select>
-          </label>
-        </div>
+                {filteredEvents.map((eventOption) => (
+                  <option key={eventOption.id} value={eventOption.id}>
+                    {eventOption.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
 
-        {loadingData && (
+        {!isInternal && loadingData && (
           <p className="text-sm text-gray-400 mt-2">
             Loading organizers and events...
           </p>
         )}
 
-        {selectedOrganizer && selectedEvent && (
+        {!isInternal && selectedOrganizer && selectedEvent && (
           <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 text-sm text-gray-300">
             <p className="font-semibold text-white">Reporting for</p>
             <p className="mt-2">Organizer: {selectedOrganizer.organizationName || selectedOrganizer.name}</p>
@@ -319,7 +329,7 @@ export function ComplaintForm({
           </div>
         )}
 
-        {!loadingData && !selectedOrganizer && (
+        {!isInternal && !loadingData && !selectedOrganizer && (
           <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 text-sm text-amber-200">
             Select an organizer and event so the complaint is routed correctly.
           </div>

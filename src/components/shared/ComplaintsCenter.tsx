@@ -6,9 +6,10 @@ import {
   MessageSquare, AlertTriangle, Clock,
   CheckCircle, ArrowUpCircle, Filter,
   Send, ChevronDown, ChevronUp, Search,
-  User, Calendar
+  User, Calendar, Plus
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { ComplaintForm } from "./ComplaintForm";
 
 interface ComplaintReply {
   id: string;
@@ -41,7 +42,7 @@ interface Complaint {
 }
 
 interface Props {
-  role: "admin" | "organizer";
+  role: "admin" | "organizer" | "overseer";
 }
 
 const statusConfig = {
@@ -78,6 +79,8 @@ function SkeletonComplaint() {
 }
 
 export function ComplaintsCenter({ role }: Props) {
+  const [activeTab, setActiveTab] = useState<"received" | "my">("received");
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -139,7 +142,15 @@ export function ComplaintsCenter({ role }: Props) {
     }
   };
 
-  const filtered = complaints.filter(
+  const filteredByTab = complaints.filter((c) => {
+    if (role === "overseer") return true;
+    if (activeTab === "my") {
+      return c.type === role.toUpperCase();
+    }
+    return c.type !== role.toUpperCase();
+  });
+
+  const filtered = filteredByTab.filter(
     (c) =>
       c.title.toLowerCase().includes(search.toLowerCase()) ||
       c.complainantName.toLowerCase().includes(search.toLowerCase()) ||
@@ -147,11 +158,11 @@ export function ComplaintsCenter({ role }: Props) {
   );
 
   const stats = {
-    total: complaints.length,
-    pending: complaints.filter((c) => c.status === "PENDING").length,
-    inProgress: complaints.filter((c) => c.status === "IN_PROGRESS").length,
-    escalated: complaints.filter((c) => c.status === "ESCALATED").length,
-    resolved: complaints.filter((c) => c.status === "RESOLVED").length,
+    total: filteredByTab.length,
+    pending: filteredByTab.filter((c) => c.status === "PENDING").length,
+    inProgress: filteredByTab.filter((c) => c.status === "IN_PROGRESS").length,
+    escalated: filteredByTab.filter((c) => c.status === "ESCALATED").length,
+    resolved: filteredByTab.filter((c) => c.status === "RESOLVED").length,
   };
 
   const timeAgo = (date: string) => {
@@ -180,19 +191,78 @@ export function ComplaintsCenter({ role }: Props) {
         ))}
       </div>
 
-      {role === "admin" && (
+      {role !== "overseer" && !showCreateForm && (
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-xl p-1">
+            <button
+              onClick={() => setActiveTab("received")}
+              className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                activeTab === "received" ? "bg-gray-800 text-white" : "text-gray-500 hover:text-gray-300"
+              }`}
+            >
+              Received Complaints
+            </button>
+            <button
+              onClick={() => setActiveTab("my")}
+              className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                activeTab === "my" ? "bg-gray-800 text-white" : "text-gray-500 hover:text-gray-300"
+              }`}
+            >
+              My Complaints
+            </button>
+          </div>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Create Complaint
+          </button>
+        </div>
+      )}
+
+      {showCreateForm && (
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <button
+              onClick={() => {
+                setShowCreateForm(false);
+                loadComplaints();
+              }}
+              className="text-sm text-gray-400 hover:text-white"
+            >
+              ← Back to complaints
+            </button>
+          </div>
+          <ComplaintForm isInternal={true} role={role.toUpperCase()} />
+        </div>
+      )}
+
+      {!showCreateForm && role === "admin" && activeTab === "received" && (
         <div className="mb-5 p-4 bg-red-500/5 border border-red-500/20 rounded-2xl">
           <p className="text-sm font-semibold text-red-400 flex items-center gap-2">
             <ArrowUpCircle className="w-4 h-4" />
             You are viewing escalated complaints assigned to admin
           </p>
           <p className="text-xs text-gray-500 mt-1">
-            These complaints were escalated by organizers after failing to resolve them.
+            These include complaints escalated by organizers and complaints directly submitted by them.
           </p>
         </div>
       )}
 
-      {role === "organizer" && (
+      {!showCreateForm && role === "overseer" && (
+        <div className="mb-5 p-4 bg-purple-500/5 border border-purple-500/20 rounded-2xl">
+          <p className="text-sm font-semibold text-purple-400 flex items-center gap-2">
+            <ArrowUpCircle className="w-4 h-4" />
+            You are viewing complaints escalated to Overseer
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Review and make the final decision.
+          </p>
+        </div>
+      )}
+
+      {!showCreateForm && role === "organizer" && activeTab === "received" && (
         <div className="mb-5 p-4 bg-blue-500/5 border border-blue-500/20 rounded-2xl">
           <p className="text-sm font-semibold text-blue-400 flex items-center gap-2">
             <MessageSquare className="w-4 h-4" />
@@ -205,7 +275,8 @@ export function ComplaintsCenter({ role }: Props) {
       )}
 
       {/* Filters */}
-      <div className="flex items-center gap-3 mb-5 flex-wrap">
+      {!showCreateForm && (
+        <div className="flex items-center gap-3 mb-5 flex-wrap">
         <div className="relative">
           <Search className="w-3.5 h-3.5 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -238,10 +309,12 @@ export function ComplaintsCenter({ role }: Props) {
         >
           ↻ Refresh
         </button>
-      </div>
+        </div>
+      )}
 
       {/* Complaints list */}
-      <div className="space-y-3">
+      {!showCreateForm && (
+        <div className="space-y-3">
         {loading ? (
           [1, 2, 3].map((i) => <SkeletonComplaint key={i} />)
         ) : filtered.length === 0 ? (
@@ -463,6 +536,26 @@ export function ComplaintsCenter({ role }: Props) {
                                   Escalate to admin
                                 </button>
                               )}
+                            {role === "admin" &&
+                              complaint.status !== "ESCALATED" && (
+                                <button
+                                  onClick={() =>
+                                    handleAction(
+                                      complaint.id,
+                                      "escalate",
+                                      "Escalating to overseer for final review."
+                                    )
+                                  }
+                                  disabled={
+                                    actionLoading ===
+                                    `${complaint.id}-escalate`
+                                  }
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-semibold transition-all disabled:opacity-50"
+                                >
+                                  <ArrowUpCircle className="w-3.5 h-3.5" />
+                                  Escalate to overseer
+                                </button>
+                              )}
                           </div>
                         )}
 
@@ -528,7 +621,7 @@ export function ComplaintsCenter({ role }: Props) {
             );
           })
         )}
-      </div>
+      )}
     </div>
   );
 }

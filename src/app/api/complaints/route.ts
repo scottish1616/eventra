@@ -33,8 +33,14 @@ export async function GET() {
         .select("id")
         .eq("email", sessionUser.email!)
         .single();
-      if (user) query = query.eq("organizerId", user.id);
-    } else if (sessionUser.role === "USER") {
+      if (user) {
+        query = query.or(`organizerId.eq.${user.id},complainantEmail.eq.${sessionUser.email}`);
+      }
+    } else if (sessionUser.role === "ADMIN") {
+      query = query.or(`assignedTo.eq.ADMIN,type.eq.ORGANIZER,complainantEmail.eq.${sessionUser.email}`);
+    } else if (sessionUser.role === "OVERSEER") {
+      query = query.or(`assignedTo.eq.OVERSEER,type.eq.ADMIN`);
+    } else if (sessionUser.role === "USER" || sessionUser.role?.startsWith("STAFF_")) {
       if (sessionUser.email) {
         query = query.eq("complainantEmail", sessionUser.email);
       } else if (sessionUser.name) {
@@ -62,7 +68,7 @@ export async function GET() {
         const safeQuery = supabase
           .from("complaints")
           .select(
-            "id, subject, message, complainantName, complainantPhone, eventId, type, status, response, createdAt, updatedAt, organizerId, eventName, organizerName",
+            "id, subject, message, complainantName, complainantPhone, eventId, type, status, response, createdAt, updatedAt, organizerId, eventName, organizerName, assignedTo",
           )
           .order("createdAt", { ascending: false });
 
@@ -100,6 +106,7 @@ export async function GET() {
       organizerId: c.organizerId || c.organizer_id || null,
       eventName: c.eventName || c.event_name || c.event?.title || null,
       organizerName: c.organizerName || c.organizer_name || null,
+      assignedTo: c.assignedTo || c.assigned_to || null,
     }));
 
     return NextResponse.json({ success: true, data: normalized }, { status: 200 });
@@ -150,12 +157,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (!eventId || !targetOrganizerId) {
+    const complaintType = type || "ATTENDEE";
+    const isInternal = complaintType === "ORGANIZER" || complaintType === "ADMIN";
+
+    if (!isInternal && (!eventId || !targetOrganizerId)) {
       return NextResponse.json(
         { success: false, error: "An event and organizer must be selected to report an issue" },
         { status: 400 }
       );
     }
+
+    let assignedTo = null;
+    if (complaintType === "ORGANIZER") assignedTo = "ADMIN";
+    if (complaintType === "ADMIN") assignedTo = "OVERSEER";
 
     const { data, error } = await supabase
       .from("complaints")
@@ -171,7 +185,8 @@ export async function POST(req: NextRequest) {
         organizerId: targetOrganizerId,
         eventName: eventName || null,
         organizerName: organizerName || null,
-        type: type || "ATTENDEE",
+        type: complaintType,
+        assignedTo,
         status: "PENDING",
       })
       .select()

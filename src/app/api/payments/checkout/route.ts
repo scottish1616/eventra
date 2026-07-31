@@ -123,37 +123,46 @@ export async function POST(req: NextRequest) {
       buyerEmail || sessionUser.email || `${buyerPhone.replace(/\s/g, "")}@guest.eventra.com`;
     const resolvedBuyerPhone = buyerPhone || "";
 
-    let userId: string | null = null;
-    const { data: existingUser } = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", resolvedBuyerEmail)
-      .maybeSingle();
+    // If the user is authenticated, always use their session id directly.
+    // Looking up by buyerEmail can resolve to a different user record when the
+    // buyer fills in a different email in the form, causing tickets to be
+    // assigned to that user instead — making them invisible on the customer
+    // dashboard which queries by session userId.
+    let userId: string | null = sessionUser.id ?? null;
 
-    if (existingUser) {
-      userId = existingUser.id;
-    } else {
-      const { data: newUser, error: userError } = await supabase
+    if (!userId) {
+      // Unauthenticated / guest flow: look up or create by email
+      const { data: existingUser } = await supabase
         .from("users")
-        .insert({
-          name: resolvedBuyerName,
-          email: resolvedBuyerEmail,
-          phone: resolvedBuyerPhone,
-          role: "USER",
-          password: null,
-        })
         .select("id")
-        .single();
+        .eq("email", resolvedBuyerEmail)
+        .maybeSingle();
 
-      if (userError || !newUser) {
-        console.error("[Checkout] User error:", userError);
-        return NextResponse.json(
-          { success: false, error: "Failed to create user" },
-          { status: 500 }
-        );
+      if (existingUser) {
+        userId = existingUser.id;
+      } else {
+        const { data: newUser, error: userError } = await supabase
+          .from("users")
+          .insert({
+            name: resolvedBuyerName,
+            email: resolvedBuyerEmail,
+            phone: resolvedBuyerPhone,
+            role: "USER",
+            password: null,
+          })
+          .select("id")
+          .single();
+
+        if (userError || !newUser) {
+          console.error("[Checkout] User error:", userError);
+          return NextResponse.json(
+            { success: false, error: "Failed to create user" },
+            { status: 500 }
+          );
+        }
+
+        userId = newUser.id;
       }
-
-      userId = newUser.id;
     }
 
     if (!userId) {

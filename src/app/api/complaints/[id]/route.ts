@@ -89,22 +89,27 @@ export async function PATCH(
     }
 
     if (action === "escalate") {
-      if (sessionUser.role !== "ORGANIZER" && !sessionUser.role.startsWith("STAFF_")) {
+      const allowedRoles = ["ORGANIZER", "ADMIN"];
+      const isStaff = sessionUser.role && sessionUser.role.startsWith("STAFF_");
+
+      if (!allowedRoles.includes(sessionUser.role) && !isStaff) {
         return NextResponse.json(
           { success: false, error: "Unauthorized to escalate" },
           { status: 403 }
         );
       }
 
-      const isOrganizer = sessionUser.role === "ORGANIZER";
-
       const updateData: any = {
         updatedAt: new Date().toISOString(),
       };
 
-      if (isOrganizer) {
+      if (sessionUser.role === "ORGANIZER") {
         updateData.status = "ESCALATED";
         updateData.assignedTo = "ADMIN";
+        updateData.escalatedAt = new Date().toISOString();
+      } else if (sessionUser.role === "ADMIN") {
+        updateData.status = "ESCALATED";
+        updateData.assignedTo = "OVERSEER";
         updateData.escalatedAt = new Date().toISOString();
       } else {
         updateData.status = "IN_PROGRESS";
@@ -119,19 +124,33 @@ export async function PATCH(
         return NextResponse.json({ success: false, error: escalateError.message }, { status: 500 });
       }
 
+      let escalationMessage = "This complaint has been escalated to the organizer.";
+      let senderName = "Staff";
+      
+      if (sessionUser.role === "ORGANIZER") {
+        escalationMessage = "This complaint has been escalated to admin for further assistance.";
+        senderName = sessionUser.name || "Organizer";
+      } else if (sessionUser.role === "ADMIN") {
+        escalationMessage = "This complaint has been escalated to the overseer for final review.";
+        senderName = "Admin";
+      } else {
+        senderName = sessionUser.name || "Staff";
+      }
+
       await supabase.from("complaint_replies").insert({
         complaintId: id,
-        message:
-          message || (isOrganizer 
-            ? "This complaint has been escalated to admin for further assistance."
-            : "This complaint has been escalated to the organizer."),
-        senderName: sessionUser.name || (isOrganizer ? "Organizer" : "Staff"),
+        message: message || escalationMessage,
+        senderName,
         senderRole: sessionUser.role,
       });
 
+      let responseMessage = "Complaint escalated to organizer";
+      if (sessionUser.role === "ORGANIZER") responseMessage = "Complaint escalated to admin";
+      if (sessionUser.role === "ADMIN") responseMessage = "Complaint escalated to overseer";
+
       return NextResponse.json({
         success: true,
-        message: isOrganizer ? "Complaint escalated to admin" : "Complaint escalated to organizer",
+        message: responseMessage,
       });
     }
 
