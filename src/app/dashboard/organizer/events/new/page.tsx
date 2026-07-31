@@ -8,7 +8,7 @@ import toast, { Toaster } from "react-hot-toast";
 import {
   Upload, X, Plus, Calendar,
   MapPin, Ticket, ImageIcon, ArrowLeft,
-  CheckCircle
+  CheckCircle, Smartphone
 } from "lucide-react";
 
 interface TicketTypeForm {
@@ -18,6 +18,18 @@ interface TicketTypeForm {
   price: number;
   totalSlots: number;
   maxPerOrder: number;
+}
+
+interface PaymentMethodForm {
+  type: "SEND_MONEY" | "BUY_GOODS" | "PAYBILL" | "POCHI_LA_BIASHARA";
+  isActive: boolean;
+  isRecommended: boolean;
+  phoneNumber?: string;
+  recipientName?: string;
+  tillNumber?: string;
+  businessName?: string;
+  paybillNumber?: string;
+  accountNumber?: string;
 }
 
 export default function NewEventPage() {
@@ -50,6 +62,24 @@ export default function NewEventPage() {
       maxPerOrder: 10,
     },
   ]);
+
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodForm[]>([
+    { type: "SEND_MONEY", isActive: false, isRecommended: false, phoneNumber: "", recipientName: "" },
+    { type: "BUY_GOODS", isActive: false, isRecommended: false, tillNumber: "", businessName: "" },
+    { type: "PAYBILL", isActive: false, isRecommended: false, paybillNumber: "", businessName: "", accountNumber: "" },
+    { type: "POCHI_LA_BIASHARA", isActive: false, isRecommended: false, phoneNumber: "", businessName: "" },
+  ]);
+
+  const updatePaymentMethod = (index: number, field: keyof PaymentMethodForm, value: string | boolean) => {
+    setPaymentMethods(prev => {
+      const newMethods = [...prev];
+      if (field === "isRecommended" && value === true) {
+        newMethods.forEach(m => m.isRecommended = false);
+      }
+      newMethods[index] = { ...newMethods[index], [field]: value };
+      return newMethods;
+    });
+  };
 
   const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -128,6 +158,7 @@ export default function NewEventPage() {
           bannerMimeType: bannerMimeType || null,
           bannerFileName: bannerFileName || null,
           ticketTypes,
+          paymentMethods,
         }),
       });
 
@@ -467,6 +498,105 @@ export default function NewEventPage() {
                       className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500"
                     />
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Payment Methods */}
+          <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
+            <div className="mb-5">
+              <h2 className="font-bold text-white flex items-center gap-2 text-sm">
+                <Smartphone className="w-4 h-4 text-purple-400" />
+                Payment Configuration (M-Pesa)
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">Enable the M-Pesa payment options you want to accept for this event.</p>
+            </div>
+            
+            <div className="space-y-4">
+              {paymentMethods.map((pm, index) => (
+                <div key={pm.type} className={`border-2 rounded-2xl p-4 transition-all ${pm.isActive ? "border-purple-500/50 bg-purple-500/5" : "border-gray-800 bg-gray-800/50"}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={pm.isActive}
+                        onChange={(e) => updatePaymentMethod(index, "isActive", e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-purple-500 focus:ring-purple-500 focus:ring-offset-gray-900"
+                      />
+                      <span className="text-sm font-bold text-white">
+                        {pm.type === "SEND_MONEY" && "Send Money"}
+                        {pm.type === "BUY_GOODS" && "Buy Goods & Services"}
+                        {pm.type === "PAYBILL" && "PayBill"}
+                        {pm.type === "POCHI_LA_BIASHARA" && "Pochi la Biashara"}
+                      </span>
+                    </div>
+                    {pm.isActive && (
+                      <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="recommendedPayment"
+                          checked={pm.isRecommended}
+                          onChange={() => updatePaymentMethod(index, "isRecommended", true)}
+                          className="w-3.5 h-3.5 text-purple-500 focus:ring-purple-500 bg-gray-700 border-gray-600"
+                        />
+                        Recommended
+                      </label>
+                    )}
+                  </div>
+
+                  {pm.isActive && (
+                    <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-700/50">
+                      {pm.type === "SEND_MONEY" && (
+                        <>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Phone Number *</label>
+                            <input value={pm.phoneNumber || ""} onChange={(e) => updatePaymentMethod(index, "phoneNumber", e.target.value)} required className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500" placeholder="e.g. 0712345678" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Recipient Name *</label>
+                            <input value={pm.recipientName || ""} onChange={(e) => updatePaymentMethod(index, "recipientName", e.target.value)} required className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500" placeholder="e.g. John Doe" />
+                          </div>
+                        </>
+                      )}
+                      {pm.type === "BUY_GOODS" && (
+                        <>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Till Number *</label>
+                            <input value={pm.tillNumber || ""} onChange={(e) => updatePaymentMethod(index, "tillNumber", e.target.value)} required className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500" placeholder="e.g. 123456" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Business Name *</label>
+                            <input value={pm.businessName || ""} onChange={(e) => updatePaymentMethod(index, "businessName", e.target.value)} required className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500" placeholder="e.g. Eventra Ltd" />
+                          </div>
+                        </>
+                      )}
+                      {pm.type === "PAYBILL" && (
+                        <>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1.5">PayBill Number *</label>
+                            <input value={pm.paybillNumber || ""} onChange={(e) => updatePaymentMethod(index, "paybillNumber", e.target.value)} required className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500" placeholder="e.g. 400200" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Business Name *</label>
+                            <input value={pm.businessName || ""} onChange={(e) => updatePaymentMethod(index, "businessName", e.target.value)} required className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500" placeholder="e.g. Eventra Ltd" />
+                          </div>
+                        </>
+                      )}
+                      {pm.type === "POCHI_LA_BIASHARA" && (
+                        <>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Phone Number *</label>
+                            <input value={pm.phoneNumber || ""} onChange={(e) => updatePaymentMethod(index, "phoneNumber", e.target.value)} required className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500" placeholder="e.g. 0712345678" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Business Name *</label>
+                            <input value={pm.businessName || ""} onChange={(e) => updatePaymentMethod(index, "businessName", e.target.value)} required className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500" placeholder="e.g. John Doe Pochi" />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

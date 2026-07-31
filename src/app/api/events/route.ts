@@ -64,6 +64,45 @@ async function uploadCoverImage(supabase: ReturnType<typeof getSupabase>, coverI
   return publicData.publicUrl;
 }
 
+async function uploadBase64Image(supabase: ReturnType<typeof getSupabase>, base64: string, mimeType: string, originalName: string) {
+  const safeFileName = originalName.replace(/[^a-zA-Z0-9.-]/g, "_");
+  const fileName = `events/${Date.now()}-${safeFileName}`;
+  const buffer = Buffer.from(base64, "base64");
+
+  const ensureBucketExists = async () => {
+    try {
+      const { error: bucketError } = await supabase.storage.createBucket(storageBucket, { public: true });
+      if (bucketError) {
+        const errorMsg = String(bucketError?.message || bucketError || "").toLowerCase();
+        if (!errorMsg.includes("bucket already exists") && !errorMsg.includes("already exists")) {
+          throw bucketError;
+        }
+      }
+    } catch (e: any) {
+      const errorMsg = String(e?.message || e || "").toLowerCase();
+      if (!errorMsg.includes("bucket already exists") && !errorMsg.includes("already exists")) {
+        throw e;
+      }
+    }
+  };
+
+  await ensureBucketExists();
+
+  const { error: uploadError } = await supabase.storage.from(storageBucket).upload(
+    fileName,
+    buffer,
+    {
+      contentType: mimeType,
+      upsert: false,
+    },
+  );
+
+  if (uploadError) throw uploadError;
+
+  const publicUrlResult = supabase.storage.from(storageBucket).getPublicUrl(fileName);
+  return publicUrlResult.data?.publicUrl;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -215,16 +254,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const formData = await req.formData();
-    const title = formData.get("title") as string;
-    const description = formData.get("description") as string;
-    const date = formData.get("date") as string;
-    const endDate = formData.get("endDate") as string;
-    const location = formData.get("location") as string;
-    const venue = formData.get("venue") as string;
-    const coverImageFile = formData.get("coverImage") as File | null;
-    const ticketTypesJson = formData.get("ticketTypes") as string;
-    const ticketTypes = JSON.parse(ticketTypesJson || "[]");
+    const body = await req.json();
+    const { title, description, date, endDate, location, venue, bannerBase64, bannerMimeType, bannerFileName, ticketTypes, paymentMethods } = body;
 
     if (!title) {
       return NextResponse.json(
@@ -256,10 +287,10 @@ export async function POST(req: NextRequest) {
 
     let coverImageUrl: string | null = null;
 
-    // Handle file upload if present
-    if (coverImageFile) {
+    if (bannerBase64 && bannerMimeType && bannerFileName) {
       try {
-        coverImageUrl = await uploadCoverImage(supabase, coverImageFile);
+        const url = await uploadBase64Image(supabase, bannerBase64, bannerMimeType, bannerFileName);
+        if (url) coverImageUrl = url;
       } catch (uploadErr) {
         console.error("[Events POST] Upload error:", uploadErr);
         return NextResponse.json(
@@ -326,6 +357,30 @@ export async function POST(req: NextRequest) {
 
       if (ttError) {
         console.error("[Events POST] Ticket type error:", ttError.message);
+      }
+    }
+
+    if (paymentMethods && Array.isArray(paymentMethods)) {
+      for (const pm of paymentMethods) {
+        if (pm.isActive) {
+          const { error: pmError } = await supabase
+            .from("event_payment_methods")
+            .insert({
+              eventId: event.id,
+              type: pm.type,
+              isRecommended: pm.isRecommended || false,
+              isActive: true,
+              phoneNumber: pm.phoneNumber || null,
+              recipientName: pm.recipientName || null,
+              tillNumber: pm.tillNumber || null,
+              businessName: pm.businessName || null,
+              paybillNumber: pm.paybillNumber || null,
+              accountNumber: pm.accountNumber || null,
+            });
+          if (pmError) {
+            console.error("[Events POST] Payment method error:", pmError.message);
+          }
+        }
       }
     }
 

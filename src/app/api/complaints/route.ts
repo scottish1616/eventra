@@ -150,6 +150,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (!eventId || !targetOrganizerId) {
+      return NextResponse.json(
+        { success: false, error: "An event and organizer must be selected to report an issue" },
+        { status: 400 }
+      );
+    }
+
     const { data, error } = await supabase
       .from("complaints")
       .insert({
