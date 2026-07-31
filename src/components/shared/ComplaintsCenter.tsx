@@ -27,6 +27,7 @@ interface Complaint {
   category: string;
   priority: string;
   status: string;
+  type: string;
   assignedTo: string;
   complainantName: string;
   complainantPhone: string | null;
@@ -621,6 +622,7 @@ export function ComplaintsCenter({ role }: Props) {
             );
           })
         )}
+        </div>
       )}
     </div>
   );

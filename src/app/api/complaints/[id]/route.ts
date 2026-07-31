@@ -92,7 +92,7 @@ export async function PATCH(
       const allowedRoles = ["ORGANIZER", "ADMIN"];
       const isStaff = sessionUser.role && sessionUser.role.startsWith("STAFF_");
 
-      if (!allowedRoles.includes(sessionUser.role) && !isStaff) {
+      if (!allowedRoles.includes(sessionUser.role ?? "") && !isStaff) {
         return NextResponse.json(
           { success: false, error: "Unauthorized to escalate" },
           { status: 403 }
