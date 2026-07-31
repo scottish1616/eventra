@@ -21,27 +21,36 @@ export async function GET() {
 
     const supabase = getSupabase();
 
-    // Prefer lookup by session user id when available (more reliable), fall back to email
-    let userQuery = supabase.from("users").select("id, loyaltyPoints");
+    // Look up user by id first, then fall back to email
+    let userId: string | null = null;
+
     if (sessionUser.id) {
-      userQuery = userQuery.eq("id", sessionUser.id);
-    } else {
-      userQuery = userQuery.eq("email", sessionUser.email);
+      const { data: userById } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", sessionUser.id)
+        .maybeSingle();
+      if (userById?.id) userId = userById.id;
     }
 
-    const { data: user, error: userError } = await userQuery.maybeSingle();
-
-    if (userError) {
-      console.error("[Customer Tickets] user lookup error:", userError);
+    if (!userId) {
+      const { data: userByEmail, error: emailErr } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", sessionUser.email)
+        .maybeSingle();
+      if (emailErr) console.error("[Customer Tickets] email lookup error:", emailErr);
+      if (userByEmail?.id) userId = userByEmail.id;
     }
 
-    if (!user) {
+    if (!userId) {
       return NextResponse.json(
         { success: false, error: "User not found" },
         { status: 404 }
       );
     }
 
+    // Fetch all tickets for this user, joined with event and ticket type
     const { data: tickets, error } = await supabase
       .from("tickets")
       .select(`
@@ -49,56 +58,67 @@ export async function GET() {
         ticketNumber,
         isUsed,
         createdAt,
-        eventId,
-        ticketTypeId
+        events ( id, title, date, location ),
+        ticket_types ( name, price, category )
       `)
-      .eq("userId", user.id)
+      .eq("userId", userId)
       .order("createdAt", { ascending: false });
 
     if (error) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 500 }
+      console.error("[Customer Tickets] fetch error:", error);
+      // Fall back to separate queries if join fails
+      const { data: plainTickets, error: plainError } = await supabase
+        .from("tickets")
+        .select("id, ticketNumber, isUsed, createdAt, eventId, ticketTypeId")
+        .eq("userId", userId)
+        .order("createdAt", { ascending: false });
+
+      if (plainError) {
+        return NextResponse.json(
+          { success: false, error: plainError.message },
+          { status: 500 }
+        );
+      }
+
+      const enriched = await Promise.all(
+        (plainTickets || []).map(async (ticket: any) => {
+          const [eventRes, ttRes] = await Promise.all([
+            supabase.from("events").select("id, title, date, location").eq("id", ticket.eventId).single(),
+            supabase.from("ticket_types").select("name, price, category").eq("id", ticket.ticketTypeId).single(),
+          ]);
+
+          return {
+            id: ticket.id,
+            ticketNumber: ticket.ticketNumber,
+            isUsed: ticket.isUsed ?? false,
+            createdAt: ticket.createdAt,
+            event: eventRes.data || null,
+            ticketType: ttRes.data || null,
+          };
+        })
       );
+
+      return NextResponse.json({ success: true, data: enriched, loyaltyPoints: 0 });
     }
 
-    const enriched = await Promise.all(
-      (tickets || []).map(async (ticket: {
-        id: string;
-        ticketNumber: string;
-        isUsed: boolean;
-        createdAt: string;
-        eventId: string;
-        ticketTypeId: string;
-      }) => {
-        const [eventRes, ttRes] = await Promise.all([
-          supabase
-            .from("events")
-            .select("id, title, date, location")
-            .eq("id", ticket.eventId)
-            .single(),
-          supabase
-            .from("ticket_types")
-            .select("name, price, category")
-            .eq("id", ticket.ticketTypeId)
-            .single(),
-        ]);
-
-        return {
-          id: ticket.id,
-          ticketNumber: ticket.ticketNumber,
-          isUsed: ticket.isUsed,
-          createdAt: ticket.createdAt,
-          event: eventRes.data || null,
-          ticketType: ttRes.data || null,
-        };
-      })
-    );
+    // Normalize the joined response
+    const normalized = (tickets || []).map((ticket: any) => ({
+      id: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      isUsed: ticket.isUsed ?? false,
+      createdAt: ticket.createdAt,
+      event: ticket.events
+        ? { id: ticket.events.id, title: ticket.events.title, date: ticket.events.date, location: ticket.events.location }
+        : null,
+      ticketType: ticket.ticket_types
+        ? { name: ticket.ticket_types.name, price: ticket.ticket_types.price, category: ticket.ticket_types.category }
+        : null,
+    }));
 
     return NextResponse.json({
       success: true,
-      data: enriched,
-      loyaltyPoints: user.loyaltyPoints || 0,
+      data: normalized,
+      loyaltyPoints: 0,
     });
   } catch (error) {
     console.error("[Customer Tickets]", error);

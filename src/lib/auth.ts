@@ -57,6 +57,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        // Persist user id in both sub (NextAuth v5 standard) and id
+        token.sub = user.id;
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
@@ -66,7 +68,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (token && session.user) {
-        (session.user as any).id = token.id;
+        // token.sub is the canonical id field in NextAuth v5
+        (session.user as any).id = token.sub ?? token.id;
         (session.user as any).role = token.role;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
