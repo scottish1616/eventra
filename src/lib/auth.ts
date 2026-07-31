@@ -25,11 +25,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const supabase = getSupabase();
           const { data, error } = await supabase
             .from("users")
-            .select("id, name, email, password, role, subscriptionStatus")
+            .select("id, name, email, password, role")
             .eq("email", (credentials.email as string).toLowerCase().trim())
             .single();
 
-          if (error || !data || !data.password) return null;
+          if (error) {
+            console.error("[Auth] Supabase error:", error);
+            return null;
+          }
+          if (!data || !data.password) return null;
 
           const isValid = await compare(
             credentials.password as string,
@@ -42,9 +46,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: data.name,
             email: data.email,
             role: data.role,
-            subscriptionStatus: data.subscriptionStatus,
           };
-        } catch {
+        } catch (e) {
+          console.error("[Auth] Exception in authorize:", e);
           return null;
         }
       },
@@ -57,7 +61,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.name = user.name;
         token.email = user.email;
         token.role = (user as Record<string, unknown>).role as string;
-        token.subscriptionStatus = (user as Record<string, unknown>).subscriptionStatus as string;
       }
       return token;
     },
@@ -65,7 +68,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token && session.user) {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
-        (session.user as any).subscriptionStatus = token.subscriptionStatus;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
       }
