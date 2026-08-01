@@ -118,7 +118,18 @@ export async function POST(req: NextRequest) {
       type === "ORGANIZER" ? "ORGANIZER" : type === "ADMIN" ? "ADMIN" : "ATTENDEE";
     const isInternal = complaintType === "ORGANIZER" || complaintType === "ADMIN";
 
-    if (!isInternal && (!eventId || !organizerId)) {
+    let targetOrganizerId = organizerId || null;
+    if (!targetOrganizerId && eventId) {
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: { organizerId: true, title: true },
+      });
+      if (event?.organizerId) {
+        targetOrganizerId = event.organizerId;
+      }
+    }
+
+    if (!isInternal && (!eventId || !targetOrganizerId)) {
       return NextResponse.json(
         {
           success: false,
@@ -145,7 +156,7 @@ export async function POST(req: NextRequest) {
         complainantPhone: complainantPhone || null,
         complainantEmail: complainantEmail || null,
         eventId: eventId || null,
-        organizerId: organizerId || null,
+        organizerId: targetOrganizerId,
         eventName: eventName || null,
         organizerName: organizerName || null,
         type: complaintType,
