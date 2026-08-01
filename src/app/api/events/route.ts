@@ -108,102 +108,79 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const mine = searchParams.get("mine") === "true";
     const search = searchParams.get("search") ?? "";
-    const supabase = getSupabase();
 
-    if (mine) {
-      const sessionUser = await getSessionUser();
-      if (!sessionUser?.email) {
-        return NextResponse.json(
-          { success: false, error: "Unauthorized" },
-          { status: 401 }
-        );
+    const { PrismaClient } = await import("@prisma/client");
+    const prisma = new PrismaClient();
+
+    try {
+      if (mine) {
+        const sessionUser = await getSessionUser();
+        if (!sessionUser?.email) {
+          return NextResponse.json(
+            { success: false, error: "Unauthorized" },
+            { status: 401 }
+          );
+        }
+
+        const user = await prisma.user.findUnique({
+          where: { email: sessionUser.email },
+          select: { id: true },
+        });
+
+        if (!user) {
+          return NextResponse.json(
+            { success: false, error: "User not found" },
+            { status: 404 }
+          );
+        }
+
+        const events = await prisma.event.findMany({
+          where: { organizerId: user.id },
+          orderBy: { date: "asc" },
+          include: {
+            ticketTypes: true,
+            _count: { select: { tickets: true, orders: true } },
+          },
+        });
+
+        return NextResponse.json({
+          success: true,
+          data: events.map((e) => ({
+            ...e,
+            bannerUrl: e.coverImage || null,
+            organizer: null,
+          })),
+        });
       }
 
-      const { data: user } = await supabase
-        .from("users")
-        .select("id")
-        .eq("email", sessionUser.email)
-        .single();
-
-      if (!user) {
-        return NextResponse.json(
-          { success: false, error: "User not found" },
-          { status: 404 }
-        );
+      const whereClause: any = { status: "PUBLISHED" };
+      if (search) {
+        whereClause.OR = [
+          { title: { contains: search, mode: "insensitive" } },
+          { location: { contains: search, mode: "insensitive" } },
+        ];
       }
 
-      const { data: events, error } = await supabase
-        .from("events")
-        .select("*, ticket_types(*), tickets(id), orders(id,total), bannerUrl")
-        .eq("organizerId", user.id)
-        .order("date", { ascending: true });
-
-      if (error) {
-        return NextResponse.json(
-          { success: false, error: error.message },
-          { status: 500 }
-        );
-      }
+      const events = await prisma.event.findMany({
+        where: whereClause,
+        orderBy: { date: "asc" },
+        include: {
+          ticketTypes: true,
+          _count: { select: { tickets: true, orders: true } },
+        },
+      });
 
       return NextResponse.json({
         success: true,
-        data: (events || []).map((e) => {
-          const { tickets, ticket_types, orders, ...rest } = e as any;
-          const bannerUrl = rest.bannerUrl || rest.coverImage || null;
-          return {
-            ...rest,
-            bannerUrl,
-            ticketTypes: ticket_types || [],
-            organizer: null,
-            _count: {
-              tickets: tickets?.length || 0,
-              orders: orders?.length || 0,
-            },
-            orders: orders || [],
-          };
-        }),
-      });
-    }
-
-    let query = supabase
-      .from("events")
-      .select("*, ticket_types(*), tickets(id), orders(id,total), bannerUrl")
-      .eq("status", "PUBLISHED")
-      .order("date", { ascending: true });
-
-    if (search) {
-      query = query.or(
-        `title.ilike.%${search}%,location.ilike.%${search}%`
-      );
-    }
-
-    const { data: events, error } = await query;
-
-    if (error) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: (events || []).map((e) => {
-        const { tickets, ticket_types, orders, ...rest } = e as any;
-        const bannerUrl = rest.bannerUrl || rest.coverImage || null;
-        return {
-          ...rest,
-          bannerUrl,
-          ticketTypes: ticket_types || [],
+        data: events.map((e) => ({
+          ...e,
+          bannerUrl: e.coverImage || null,
           organizer: null,
-          _count: {
-            tickets: tickets?.length || 0,
-            orders: orders?.length || 0,
-          },
-          orders: orders || [],
-        };
-      }),
-    });
+        })),
+      });
+    } finally {
+      await prisma.$disconnect();
+    }
   } catch (error) {
     console.error("[Events GET]", error);
     return NextResponse.json(
