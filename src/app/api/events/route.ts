@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { PrismaClient } from "@prisma/client";
 import { getSessionUser } from "@/lib/session";
+
+const prisma = new PrismaClient();
 
 function getSupabase() {
   return createClient(
@@ -109,60 +112,29 @@ export async function GET(req: NextRequest) {
     const mine = searchParams.get("mine") === "true";
     const search = searchParams.get("search") ?? "";
 
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
-
-    try {
-      if (mine) {
-        const sessionUser = await getSessionUser();
-        if (!sessionUser?.email) {
-          return NextResponse.json(
-            { success: false, error: "Unauthorized" },
-            { status: 401 }
-          );
-        }
-
-        const user = await prisma.user.findUnique({
-          where: { email: sessionUser.email },
-          select: { id: true },
-        });
-
-        if (!user) {
-          return NextResponse.json(
-            { success: false, error: "User not found" },
-            { status: 404 }
-          );
-        }
-
-        const events = await prisma.event.findMany({
-          where: { organizerId: user.id },
-          orderBy: { date: "asc" },
-          include: {
-            ticketTypes: true,
-            _count: { select: { tickets: true, orders: true } },
-          },
-        });
-
-        return NextResponse.json({
-          success: true,
-          data: events.map((e) => ({
-            ...e,
-            bannerUrl: e.coverImage || null,
-            organizer: null,
-          })),
-        });
+    if (mine) {
+      const sessionUser = await getSessionUser();
+      if (!sessionUser?.email) {
+        return NextResponse.json(
+          { success: false, error: "Unauthorized" },
+          { status: 401 }
+        );
       }
 
-      const whereClause: any = { status: "PUBLISHED" };
-      if (search) {
-        whereClause.OR = [
-          { title: { contains: search, mode: "insensitive" } },
-          { location: { contains: search, mode: "insensitive" } },
-        ];
+      const user = await prisma.user.findUnique({
+        where: { email: sessionUser.email },
+        select: { id: true },
+      });
+
+      if (!user) {
+        return NextResponse.json(
+          { success: false, error: "User not found" },
+          { status: 404 }
+        );
       }
 
       const events = await prisma.event.findMany({
-        where: whereClause,
+        where: { organizerId: user.id },
         orderBy: { date: "asc" },
         include: {
           ticketTypes: true,
@@ -178,9 +150,33 @@ export async function GET(req: NextRequest) {
           organizer: null,
         })),
       });
-    } finally {
-      await prisma.$disconnect();
     }
+
+    const whereClause: any = { status: "PUBLISHED" };
+    if (search) {
+      whereClause.OR = [
+        { title: { contains: search, mode: "insensitive" } },
+        { location: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    const events = await prisma.event.findMany({
+      where: whereClause,
+      orderBy: { date: "asc" },
+      include: {
+        ticketTypes: true,
+        _count: { select: { tickets: true, orders: true } },
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: events.map((e) => ({
+        ...e,
+        bannerUrl: e.coverImage || null,
+        organizer: null,
+      })),
+    });
   } catch (error) {
     console.error("[Events GET]", error);
     return NextResponse.json(
