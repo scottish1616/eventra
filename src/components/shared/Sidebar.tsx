@@ -42,7 +42,7 @@ const organizerNav: NavItem[] = [
   { id: "events", label: "My Events", icon: Calendar },
   { id: "staff", label: "Staff", icon: Users },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
-  { id: "complaints", label: "Attendee Issues", icon: MessageSquare },
+  { id: "complaints", label: "Complaint Center", icon: MessageSquare },
   { id: "promotions", label: "Promotions", icon: Zap },
   { id: "settings", label: "Settings", icon: Settings },
 ];
@@ -52,6 +52,7 @@ const customerNav: NavItem[] = [
   { id: "history", label: "History", icon: History },
   { id: "reviews", label: "Reviews", icon: Sparkles },
   { id: "loyalty", label: "Loyalty", icon: Zap },
+  { id: "complaints", label: "Support", icon: MessageSquare },
   { id: "profile", label: "Profile", icon: CircleUserRound },
 ];
 

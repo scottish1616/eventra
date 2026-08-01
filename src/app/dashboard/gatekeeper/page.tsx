@@ -11,6 +11,8 @@ import {
   QrCode, Users, LogOut, Shield, Clock, RotateCcw
 } from "lucide-react";
 import { signOut } from "next-auth/react";
+import { MessageSquare } from "lucide-react";
+import { ComplaintsCenter } from "@/components/shared/ComplaintsCenter";
 
 interface TicketData {
   id: string;
@@ -41,6 +43,7 @@ export default function GatekeeperDashboard() {
     pending: 0,
     total: 0,
   });
+  const [activeTab, setActiveTab] = useState<"scan" | "complaints">("scan");
 
   const user = session?.user as SessionUser | undefined;
 
@@ -178,7 +181,36 @@ export default function GatekeeperDashboard() {
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <div className="flex gap-2 bg-gray-900 border border-gray-800 rounded-2xl p-1 mb-6 max-w-sm mx-auto">
+          <button
+            onClick={() => setActiveTab("scan")}
+            className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
+              activeTab === "scan"
+                ? "bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-md"
+                : "text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            Scanner
+          </button>
+          <button
+            onClick={() => setActiveTab("complaints")}
+            className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
+              activeTab === "complaints"
+                ? "bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-md"
+                : "text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            Support
+          </button>
+        </div>
+
+        {activeTab === "complaints" ? (
+          <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
+            <ComplaintsCenter role="gatekeeper" />
+          </div>
+        ) : (
+          <div className="space-y-6">
 
         {/* Scan / Lookup */}
         <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
@@ -386,6 +418,8 @@ export default function GatekeeperDashboard() {
               Enter a ticket number above to get started
             </p>
           </div>
+        )}
+      </div>
         )}
       </div>
     </div>

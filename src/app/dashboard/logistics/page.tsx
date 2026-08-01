@@ -10,6 +10,8 @@ import {
   Clock, MapPin, LogOut, Ticket, BarChart3
 } from "lucide-react";
 import { signOut } from "next-auth/react";
+import { MessageSquare } from "lucide-react";
+import { ComplaintsCenter } from "@/components/shared/ComplaintsCenter";
 
 interface Event {
   id: string;
@@ -34,6 +36,7 @@ export default function LogisticsDashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [activeTab, setActiveTab] = useState<"logistics" | "complaints">("logistics");
 
   const user = session?.user as SessionUser | undefined;
 
@@ -93,6 +96,35 @@ export default function LogisticsDashboard() {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="flex gap-2 bg-gray-900 border border-gray-800 rounded-2xl p-1 mb-8 max-w-sm mx-auto">
+          <button
+            onClick={() => setActiveTab("logistics")}
+            className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
+              activeTab === "logistics"
+                ? "bg-gradient-to-r from-teal-500 to-blue-600 text-white shadow-md"
+                : "text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            Logistics
+          </button>
+          <button
+            onClick={() => setActiveTab("complaints")}
+            className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
+              activeTab === "complaints"
+                ? "bg-gradient-to-r from-teal-500 to-blue-600 text-white shadow-md"
+                : "text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            Support
+          </button>
+        </div>
+
+        {activeTab === "complaints" ? (
+          <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
+            <ComplaintsCenter role="logistics" />
+          </div>
+        ) : (
+          <div className="space-y-8">
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
@@ -248,6 +280,8 @@ export default function LogisticsDashboard() {
             )}
           </div>
         </div>
+          </div>
+        )}
       </div>
     </div>
   );

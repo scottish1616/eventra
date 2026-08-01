@@ -10,11 +10,12 @@ import {
   Ticket, Calendar, Star, LogOut,
   User, MapPin, CheckCircle, XCircle,
   Clock, Gift, ChevronRight, Plus, Menu,
-  History, Sparkles, Settings
+  History, Sparkles, Settings, MessageSquare
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { getCustomerDashboardStats } from "@/lib/customerDashboard";
+import { ComplaintsCenter } from "@/components/shared/ComplaintsCenter";
 
 interface TicketData {
   id: string;
@@ -45,7 +46,7 @@ type SessionUser = {
   role?: string;
 };
 
-type Tab = "tickets" | "history" | "reviews" | "loyalty" | "profile";
+type Tab = "tickets" | "history" | "reviews" | "loyalty" | "complaints" | "profile";
 
 export default function CustomerDashboard() {
   const { data: session, status } = useSession();
@@ -212,6 +213,7 @@ export default function CustomerDashboard() {
                 { id: "history", label: "History", icon: History },
                 { id: "reviews", label: "Reviews", icon: Sparkles },
                 { id: "loyalty", label: "Loyalty", icon: Gift },
+                { id: "complaints", label: "Support", icon: MessageSquare },
                 { id: "profile", label: "Profile", icon: User },
               ].map((tab) => (
                 <button
@@ -387,6 +389,12 @@ export default function CustomerDashboard() {
                         ))}
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {activeTab === "complaints" && (
+                  <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+                    <ComplaintsCenter role="customer" />
                   </div>
                 )}
 

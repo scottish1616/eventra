@@ -303,3 +303,46 @@ model Notification {
   @@index([userId])
   @@map("notifications")
 }
+
+enum ComplaintPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ComplaintStatus {
+  PENDING
+  RESOLVED
+  REJECTED
+}
+
+enum ComplaintType {
+  ATTENDEE
+  ORGANIZER
+  ADMIN
+}
+
+model Complaint {
+  id               String            @id @default(cuid())
+  subject          String
+  message          String            @db.Text
+  category         String            @default("OTHER")
+  priority         ComplaintPriority @default(MEDIUM)
+  complainantName  String
+  complainantPhone String?
+  complainantEmail String?
+  eventId          String?
+  organizerId      String?
+  eventName        String?
+  organizerName    String?
+  type             ComplaintType     @default(ATTENDEE)
+  assignedTo       String?
+  status           ComplaintStatus   @default(PENDING)
+  response         String?           @db.Text
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([eventId])
+  @@index([organizerId])
+  @@map("complaints")
+}

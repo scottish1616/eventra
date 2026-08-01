@@ -43,7 +43,7 @@ interface Complaint {
 }
 
 interface Props {
-  role: "admin" | "organizer" | "overseer";
+  role: "admin" | "organizer" | "overseer" | "customer" | "gatekeeper" | "logistics";
 }
 
 const statusConfig = {
