@@ -1,45 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
-import { PrismaClient } from "@prisma/client";
+import { createClient } from "@supabase/supabase-js";
 
-const prisma = new PrismaClient();
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
   try {
     const sessionUser = await getSessionUser();
     if (!sessionUser?.email) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await context.params;
     if (!id) {
       return NextResponse.json({ success: false, error: "Order ID missing" }, { status: 400 });
     }
 
-    const order = await prisma.order.findUnique({
-      where: { id },
-      include: {
-        event: {
-          include: {
-            paymentMethods: {
-              where: { isActive: true }
-            }
-          }
-        },
-        items: {
-          include: { ticketType: true }
-        }
-      }
-    });
+    const supabase = getSupabase();
 
-    if (!order) {
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select("*, event:events(*), items:order_items(*, ticketType:ticket_types(*))")
+      .eq("id", id)
+      .single();
+
+    if (orderError || !order) {
       return NextResponse.json({ success: false, error: "Order not found" }, { status: 404 });
     }
 
-    // Return the order, event details, and payment methods
+    const { data: paymentMethods } = await supabase
+      .from("event_payment_methods")
+      .select("*")
+      .eq("eventId", order.eventId)
+      .eq("isActive", true)
+      .order("isRecommended", { ascending: false });
+
     return NextResponse.json({
       success: true,
-      data: order
+      data: {
+        ...order,
+        event: {
+          ...order.event,
+          paymentMethods: paymentMethods || [],
+        },
+        items: order.items || [],
+      },
     });
 
   } catch (error) {

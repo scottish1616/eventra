@@ -33,9 +33,19 @@ interface EventData {
     organizationName?: string;
   } | null;
   ticketTypes: TicketType[];
+  paymentMethods?: Array<{
+    id: string;
+    type: string;
+    isRecommended?: boolean;
+    isActive?: boolean;
+    phoneNumber?: string;
+    recipientName?: string;
+    tillNumber?: string;
+    businessName?: string;
+    paybillNumber?: string;
+    accountNumber?: string;
+  }>;
 }
-
-type PaymentMethod = "MPESA" | "SIMULATED";
 
 export default function EventBuyPage() {
   const params = useParams();
@@ -50,7 +60,7 @@ export default function EventBuyPage() {
   const [buyerName, setBuyerName] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("MPESA");
+  const [selectedPaymentType, setSelectedPaymentType] = useState<string>("SIMULATED");
   const [submitting, setSubmitting] = useState(false);
   const [successTicketIds, setSuccessTicketIds] = useState<string[]>([]);
 
@@ -79,6 +89,15 @@ export default function EventBuyPage() {
         }
 
         setEvent(json.data);
+      const configuredMethods = Array.isArray(json.data?.paymentMethods)
+        ? json.data.paymentMethods.filter((pm: { isActive?: boolean }) => pm.isActive !== false)
+        : [];
+      if (configuredMethods.length > 0) {
+        const recommended = configuredMethods.find((pm: { isRecommended?: boolean }) => pm.isRecommended);
+        setSelectedPaymentType(recommended?.type || configuredMethods[0]?.type || "SIMULATED");
+      } else {
+        setSelectedPaymentType("SIMULATED");
+      }
       } catch (err) {
         setError("Unable to load event. Please try again.");
       } finally {
@@ -168,7 +187,7 @@ export default function EventBuyPage() {
           buyerName: buyerName.trim(),
           buyerPhone: buyerPhone.trim(),
           buyerEmail: buyerEmail.trim(),
-          paymentMethod,
+          paymentMethod: selectedPaymentType,
         }),
       });
 
@@ -389,40 +408,85 @@ export default function EventBuyPage() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-white">Payment method</p>
-                  <p className="text-xs text-white/70">M-Pesa is supported now. Use test payment for demo checkout.</p>
+                  <p className="text-xs text-white/70">Organizer payment options for this event are shown below.</p>
                 </div>
               </div>
               <div className="space-y-3">
-                {(["MPESA", "SIMULATED"] as PaymentMethod[]).map((method) => (
+                {(event?.paymentMethods?.filter((pm) => pm.isActive !== false) ?? []).length > 0 ? (
+                  (event?.paymentMethods ?? [])
+                    .filter((pm) => pm.isActive !== false)
+                    .map((pm) => {
+                      const isSelected = selectedPaymentType === pm.type;
+                      const summaryText =
+                        pm.type === "SEND_MONEY"
+                          ? `Send to ${pm.phoneNumber || "your phone"}`
+                          : pm.type === "BUY_GOODS"
+                            ? `Till ${pm.tillNumber || ""}`
+                            : pm.type === "PAYBILL"
+                              ? `Paybill ${pm.paybillNumber || ""}`
+                              : pm.type === "POCHI_LA_BIASHARA"
+                                ? `Pochi ${pm.phoneNumber || ""}`
+                                : pm.type;
+
+                      return (
+                        <button
+                          key={pm.id}
+                          type="button"
+                          onClick={() => setSelectedPaymentType(pm.type)}
+                          className={`w-full rounded-3xl border px-4 py-4 text-left transition ${
+                            isSelected
+                              ? "border-violet-500 bg-white/6"
+                              : "border-white/6 bg-white/3 hover:border-white/20"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-4">
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">{pm.type.replace(/_/g, " ")}</p>
+                              <p className="text-xs text-gray-500">{summaryText}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {pm.isRecommended && (
+                                <span className="rounded-full bg-violet-500/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-violet-200">
+                                  Recommended
+                                </span>
+                              )}
+                              <div
+                                className={`h-5 w-5 rounded-full border ${
+                                  isSelected
+                                    ? "border-violet-500 bg-violet-600"
+                                    : "border-white/6"
+                                }`}
+                              />
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })
+                ) : (
                   <button
-                    key={method}
                     type="button"
-                    onClick={() => setPaymentMethod(method)}
+                    onClick={() => setSelectedPaymentType("SIMULATED")}
                     className={`w-full rounded-3xl border px-4 py-4 text-left transition ${
-                      paymentMethod === method
+                      selectedPaymentType === "SIMULATED"
                         ? "border-violet-500 bg-white/6"
                         : "border-white/6 bg-white/3 hover:border-white/20"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">{method === "MPESA" ? "M-Pesa" : "Test payment"}</p>
-                        <p className="text-xs text-gray-500">
-                          {method === "MPESA"
-                            ? "Pay with STK push."
-                            : "Simulate a completed order for testing."}
-                        </p>
+                        <p className="text-sm font-semibold text-gray-900">Test payment</p>
+                        <p className="text-xs text-gray-500">Simulate a completed order for testing.</p>
                       </div>
                       <div
                         className={`h-5 w-5 rounded-full border ${
-                          paymentMethod === method
+                          selectedPaymentType === "SIMULATED"
                             ? "border-violet-500 bg-violet-600"
                             : "border-white/6"
                         }`}
                       />
                     </div>
                   </button>
-                ))}
+                )}
               </div>
             </div>
 

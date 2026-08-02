@@ -42,6 +42,13 @@ export async function GET(
       .eq("id", event.organizerId)
       .single();
 
+    const { data: paymentMethods } = await supabase
+      .from("event_payment_methods")
+      .select("*")
+      .eq("eventId", event.id)
+      .eq("isActive", true)
+      .order("isRecommended", { ascending: false });
+
     return NextResponse.json({
       success: true,
       data: {
@@ -49,6 +56,7 @@ export async function GET(
         bannerUrl: event.bannerUrl || event.coverImage || null,
         ticketTypes: ticketTypes || [],
         organizer: organizer || null,
+        paymentMethods: paymentMethods || [],
       },
     });
   } catch (error) {

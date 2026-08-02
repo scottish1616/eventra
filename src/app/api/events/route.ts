@@ -281,9 +281,13 @@ export async function POST(req: NextRequest) {
       "-" +
       Math.random().toString(36).substring(2, 8);
 
+    const eventId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
     const { data: event, error: eventError } = await supabase
       .from("events")
       .insert({
+        id: eventId,
         title,
         description: description || null,
         date: new Date(date).toISOString(),
@@ -296,6 +300,8 @@ export async function POST(req: NextRequest) {
         organizerId: user.id,
         platformFeePercent: 5,
         platformFeeFixed: 0,
+        createdAt: now,
+        updatedAt: now,
       })
       .select()
       .single();
@@ -315,6 +321,7 @@ export async function POST(req: NextRequest) {
       const { error: ttError } = await supabase
         .from("ticket_types")
         .insert({
+          id: crypto.randomUUID(),
           eventId: event.id,
           category: tt.category || "REGULAR",
           name: tt.name,
@@ -324,6 +331,8 @@ export async function POST(req: NextRequest) {
           soldCount: 0,
           isActive: true,
           maxPerOrder: Number(tt.maxPerOrder) || 10,
+          createdAt: now,
+          updatedAt: now,
         });
 
       if (ttError) {
@@ -337,6 +346,7 @@ export async function POST(req: NextRequest) {
           const { error: pmError } = await supabase
             .from("event_payment_methods")
             .insert({
+              id: crypto.randomUUID(),
               eventId: event.id,
               type: pm.type,
               isRecommended: pm.isRecommended || false,
@@ -347,6 +357,8 @@ export async function POST(req: NextRequest) {
               businessName: pm.businessName || null,
               paybillNumber: pm.paybillNumber || null,
               accountNumber: pm.accountNumber || null,
+              createdAt: now,
+              updatedAt: now,
             });
           if (pmError) {
             console.error("[Events POST] Payment method error:", pmError.message);

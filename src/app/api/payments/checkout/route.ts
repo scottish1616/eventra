@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = getSupabase();
+    const now = new Date().toISOString();
 
     const { data: event, error: eventError } = await supabase
       .from("events")
@@ -172,9 +173,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const orderId = crypto.randomUUID();
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
+        id: orderId,
         userId,
         eventId,
         status: "PENDING",
@@ -184,6 +187,8 @@ export async function POST(req: NextRequest) {
         buyerName: resolvedBuyerName,
         buyerEmail: resolvedBuyerEmail,
         buyerPhone: resolvedBuyerPhone,
+        createdAt: now,
+        updatedAt: now,
       })
       .select()
       .single();
@@ -198,31 +203,37 @@ export async function POST(req: NextRequest) {
 
     for (const { tt, item } of validatedItems) {
       await supabase.from("order_items").insert({
+        id: crypto.randomUUID(),
         orderId: order.id,
         ticketTypeId: tt.id,
         quantity: item.quantity,
         unitPrice: tt.price,
         subtotal: tt.price * item.quantity,
+        createdAt: now,
+        updatedAt: now,
       });
     }
 
-    if (paymentMethod === "MPESA") {
-      // Defer actual M-Pesa STK integration to organizer-configured settings.
-      // Create a pending payment record and return awaitingPayment=true so
-      // the frontend can show a pending state. The organizer will later
-      // configure the exact flow (till/buygoods/paybill/etc.).
+    const normalizedPaymentMethod = String(paymentMethod || "SIMULATED")
+      .toUpperCase()
+      .trim();
+
+    if (normalizedPaymentMethod !== "SIMULATED") {
       await supabase.from("payments").insert({
+        id: crypto.randomUUID(),
         orderId: order.id,
         amount: total,
-        method: "MPESA",
+        method: normalizedPaymentMethod,
         status: "PENDING",
+        createdAt: now,
+        updatedAt: now,
       });
 
       return NextResponse.json({
         success: true,
         data: {
           orderId: order.id,
-          paymentMethod: "MPESA",
+          paymentMethod: normalizedPaymentMethod,
           message: "Payment recorded as pending; await organizer payment instructions.",
           tickets: [],
           awaitingPayment: true,
@@ -251,6 +262,8 @@ export async function POST(req: NextRequest) {
             attendeeEmail: resolvedBuyerEmail,
             qrCode: "",
             qrCodeData: qrPayload,
+            createdAt: now,
+            updatedAt: now,
           })
           .select("id")
           .single();
@@ -292,11 +305,14 @@ export async function POST(req: NextRequest) {
     }
 
     await supabase.from("payments").insert({
+      id: crypto.randomUUID(),
       orderId: order.id,
       amount: total,
       method: "SIMULATED",
       status: "COMPLETED",
-      paidAt: new Date().toISOString(),
+      paidAt: now,
+      createdAt: now,
+      updatedAt: now,
     });
 
     await supabase

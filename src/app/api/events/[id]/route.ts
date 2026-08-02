@@ -304,6 +304,7 @@ export async function PUT(
         await supabase
           .from("ticket_types")
           .insert({
+            id: crypto.randomUUID(),
             eventId,
             category: tt.category || "REGULAR",
             name: tt.name,
@@ -313,6 +314,8 @@ export async function PUT(
             soldCount: 0,
             isActive: true,
             maxPerOrder: Number(tt.maxPerOrder) || 10,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
           });
       }
     }

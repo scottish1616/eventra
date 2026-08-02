@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { initiateStkPush, formatPhone } from "@/lib/mpesa";
 
 function getSupabase() {
   return createClient(
@@ -39,6 +38,7 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = getSupabase();
+    const now = new Date().toISOString();
 
     const { data: event, error: eventError } = await supabase
       .from("events")
@@ -155,9 +155,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const orderId = crypto.randomUUID();
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
+        id: orderId,
         userId,
         eventId,
         status: "PENDING",
@@ -167,6 +169,8 @@ export async function POST(req: NextRequest) {
         buyerName,
         buyerEmail: guestEmail,
         buyerPhone,
+        createdAt: now,
+        updatedAt: now,
       })
       .select()
       .single();
@@ -181,74 +185,53 @@ export async function POST(req: NextRequest) {
 
     for (const { tt, item } of validatedItems) {
       await supabase.from("order_items").insert({
+        id: crypto.randomUUID(),
         orderId: order.id,
         ticketTypeId: tt.id,
         quantity: item.quantity,
         unitPrice: tt.price,
         subtotal: tt.price * item.quantity,
+        createdAt: now,
+        updatedAt: now,
       });
     }
 
-    // Handle M-Pesa STK push
-    if (paymentMethod === "MPESA") {
-      try {
-        const cleanPhone = formatPhone(buyerPhone);
-        console.log("[Guest Checkout] M-Pesa phone:", cleanPhone);
-        console.log("[Guest Checkout] M-Pesa amount:", total);
+    const normalizedPaymentMethod = String(paymentMethod || "SIMULATED")
+      .toUpperCase()
+      .trim();
 
-        const stkResult = await initiateStkPush({
-          phone: cleanPhone,
-          amount: total,
+    if (normalizedPaymentMethod !== "SIMULATED") {
+      await supabase.from("payments").insert({
+        id: crypto.randomUUID(),
+        orderId: order.id,
+        amount: total,
+        method: normalizedPaymentMethod,
+        status: "PENDING",
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: {
           orderId: order.id,
-          description: `Ticket - ${event.title.substring(0, 13)}`,
-        });
-
-        await supabase.from("payments").insert({
-          orderId: order.id,
-          amount: total,
-          method: "MPESA",
-          status: "PENDING",
-          mpesaCheckoutRequestId: stkResult.CheckoutRequestID,
-        });
-
-        return NextResponse.json({
-          success: true,
-          data: {
-            orderId: order.id,
-            paymentMethod: "MPESA",
-            checkoutRequestId: stkResult.CheckoutRequestID,
-            message:
-              "M-Pesa prompt sent to your phone. Enter your PIN to complete payment.",
-            tickets: [],
-            awaitingPayment: true,
-          },
-        });
-      } catch (mpesaError) {
-        const msg =
-          mpesaError instanceof Error
-            ? mpesaError.message
-            : "M-Pesa error";
-        console.error("[M-Pesa STK Error]", msg);
-
-        await supabase.from("orders").delete().eq("id", order.id);
-
-        return NextResponse.json(
-          {
-            success: false,
-            error: `M-Pesa failed: ${msg}`,
-          },
-          { status: 500 }
-        );
-      }
+          paymentMethod: normalizedPaymentMethod,
+          message: "Payment recorded as pending; await organizer payment instructions.",
+          tickets: [],
+          awaitingPayment: true,
+        },
+      });
     }
 
-    // Simulated payment flow
     await supabase.from("payments").insert({
+      id: crypto.randomUUID(),
       orderId: order.id,
       amount: total,
       method: "SIMULATED",
       status: "COMPLETED",
-      paidAt: new Date().toISOString(),
+      paidAt: now,
+      createdAt: now,
+      updatedAt: now,
     });
 
     await supabase
@@ -277,6 +260,8 @@ export async function POST(req: NextRequest) {
             attendeeEmail: guestEmail,
             qrCode: "",
             qrCodeData: qrPayload,
+            createdAt: now,
+            updatedAt: now,
           })
           .select("id")
           .single();
