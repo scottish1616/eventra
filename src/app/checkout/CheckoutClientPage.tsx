@@ -290,7 +290,7 @@ export default function CheckoutClientPage() {
               </div>
               <h1 className="text-2xl font-bold text-white mb-2">Payment Confirmed!</h1>
               <p className="text-slate-400 text-sm mb-8">
-                Your tickets have been successfully generated and sent to your email.
+                Your ticket is now confirmed and will appear on your dashboard after successful payment verification.
               </p>
               
               {tickets.length > 0 && (

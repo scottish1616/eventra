@@ -412,7 +412,7 @@ export default function EventBuyPage() {
                 </div>
               </div>
               <div className="space-y-3">
-                {(event?.paymentMethods?.filter((pm) => pm.isActive !== false) ?? []).length > 0 ? (
+                {(event?.paymentMethods?.filter((pm) => pm.isActive !== false) ?? []).length > 0 && (
                   (event?.paymentMethods ?? [])
                     .filter((pm) => pm.isActive !== false)
                     .map((pm) => {
@@ -462,31 +462,31 @@ export default function EventBuyPage() {
                         </button>
                       );
                     })
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPaymentType("SIMULATED")}
-                    className={`w-full rounded-3xl border px-4 py-4 text-left transition ${
-                      selectedPaymentType === "SIMULATED"
-                        ? "border-violet-500 bg-white/6"
-                        : "border-white/6 bg-white/3 hover:border-white/20"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">Test payment</p>
-                        <p className="text-xs text-gray-500">Simulate a completed order for testing.</p>
-                      </div>
-                      <div
-                        className={`h-5 w-5 rounded-full border ${
-                          selectedPaymentType === "SIMULATED"
-                            ? "border-violet-500 bg-violet-600"
-                            : "border-white/6"
-                        }`}
-                      />
-                    </div>
-                  </button>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedPaymentType("SIMULATED")}
+                  className={`w-full rounded-3xl border px-4 py-4 text-left transition ${
+                    selectedPaymentType === "SIMULATED"
+                      ? "border-violet-500 bg-white/6"
+                      : "border-white/6 bg-white/3 hover:border-white/20"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Test payment</p>
+                      <p className="text-xs text-gray-500">Simulate a completed order for testing.</p>
+                    </div>
+                    <div
+                      className={`h-5 w-5 rounded-full border ${
+                        selectedPaymentType === "SIMULATED"
+                          ? "border-violet-500 bg-violet-600"
+                          : "border-white/6"
+                      }`}
+                    />
+                  </div>
+                </button>
               </div>
             </div>
 
@@ -516,7 +516,7 @@ export default function EventBuyPage() {
               </Button>
 
               <p className="text-xs text-white/60 mt-4">
-                Your tickets will be delivered to your email after successful payment.
+                Your ticket will reflect on your dashboard once successful payment verification is complete.
               </p>
             </div>
 

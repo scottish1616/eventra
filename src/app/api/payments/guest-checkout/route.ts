@@ -200,113 +200,24 @@ export async function POST(req: NextRequest) {
       .toUpperCase()
       .trim();
 
-    if (normalizedPaymentMethod !== "SIMULATED") {
-      await supabase.from("payments").insert({
-        id: crypto.randomUUID(),
-        orderId: order.id,
-        amount: total,
-        method: normalizedPaymentMethod,
-        status: "PENDING",
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          orderId: order.id,
-          paymentMethod: normalizedPaymentMethod,
-          message: "Payment recorded as pending; await organizer payment instructions.",
-          tickets: [],
-          awaitingPayment: true,
-        },
-      });
-    }
-
     await supabase.from("payments").insert({
       id: crypto.randomUUID(),
       orderId: order.id,
       amount: total,
-      method: "SIMULATED",
-      status: "COMPLETED",
-      paidAt: now,
+      method: normalizedPaymentMethod,
+      status: "PENDING",
       createdAt: now,
       updatedAt: now,
     });
-
-    await supabase
-      .from("orders")
-      .update({ status: "CONFIRMED" })
-      .eq("id", order.id);
-
-    const ticketIds: string[] = [];
-
-    for (const { tt, item } of validatedItems) {
-      for (let i = 0; i < item.quantity; i++) {
-        const ticketId = crypto.randomUUID();
-        const ticketNumber = generateTicketNumber(event.title);
-        const qrPayload = generateQrPayload(ticketId, eventId);
-
-        const { data: ticket } = await supabase
-          .from("tickets")
-          .insert({
-            id: ticketId,
-            ticketNumber,
-            userId,
-            eventId,
-            orderId: order.id,
-            ticketTypeId: tt.id,
-            attendeeName: buyerName,
-            attendeeEmail: guestEmail,
-            qrCode: "",
-            qrCodeData: qrPayload,
-            createdAt: now,
-            updatedAt: now,
-          })
-          .select("id")
-          .single();
-
-        if (ticket) ticketIds.push((ticket as { id: string }).id);
-      }
-
-      await supabase
-        .from("ticket_types")
-        .update({ soldCount: tt.soldCount + item.quantity })
-        .eq("id", tt.id);
-    }
-    // After issuing tickets, add loyalty points if user has account
-    const totalItems = validatedItems.reduce((sum, v) => sum + v.item.quantity, 0);
-    const { data: userRecord } = await supabase
-      .from("users")
-      .select("role, loyaltyPoints")
-      .eq("id", userId)
-      .single();
-
-    if (userRecord && ["CUSTOMER", "USER"].includes(userRecord.role)) {
-      const pointsToAdd = 5 * totalItems;
-      await supabase
-        .from("users")
-        .update({
-          loyaltyPoints: (userRecord.loyaltyPoints || 0) + pointsToAdd,
-        })
-        .eq("id", userId);
-
-      await supabase.from("loyalty_points").insert({
-        userId,
-        points: pointsToAdd,
-        reason: `Purchased ${totalItems} ticket${totalItems > 1 ? "s" : ""} for ${event.title}`,
-        eventId,
-      });
-    }
-
 
     return NextResponse.json({
       success: true,
       data: {
         orderId: order.id,
-        paymentMethod: "SIMULATED",
-        tickets: ticketIds,
-        awaitingPayment: false,
+        paymentMethod: normalizedPaymentMethod,
+        message: "Payment recorded as pending; complete verification to confirm the order.",
+        tickets: [],
+        awaitingPayment: true,
       },
     });
   } catch (error) {

@@ -1,122 +1,196 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/session";
-import { PrismaClient } from "@prisma/client";
-import { issueTicketsForOrder } from "@/lib/tickets";
+import { createClient } from "@supabase/supabase-js";
 
-const prisma = new PrismaClient();
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
+
+function generateTicketNumber(prefix: string): string {
+  const year = new Date().getFullYear();
+  const random = Math.floor(100000 + Math.random() * 900000);
+  return `${prefix.substring(0, 3).toUpperCase()}-${year}-${random}`;
+}
+
+function generateQrPayload(ticketId: string, eventId: string): string {
+  return `eventra:ticket:${ticketId}:${eventId}:${Date.now()}`;
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const sessionUser = await getSessionUser();
-    if (!sessionUser?.email) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await req.json();
     const { orderId, code } = body;
 
     if (!orderId || !code) {
-      return NextResponse.json({ success: false, error: "Missing orderId or code" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Missing orderId or code" },
+        { status: 400 }
+      );
     }
 
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-      include: {
-        event: true,
-      }
-    });
+    const supabase = getSupabase();
+    const confirmationCode = String(code).trim().toUpperCase();
 
-    if (!order) {
-      return NextResponse.json({ success: false, error: "Order not found" }, { status: 404 });
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select("*, event:events(*), items:order_items(*, ticketType:ticket_types(*))")
+      .eq("id", orderId)
+      .single();
+
+    if (orderError || !order) {
+      return NextResponse.json(
+        { success: false, error: "Order not found" },
+        { status: 404 }
+      );
     }
 
     if (order.status === "CONFIRMED") {
-      return NextResponse.json({ success: false, error: "Order is already confirmed" }, { status: 400 });
+      const { data: existingTickets } = await supabase
+        .from("tickets")
+        .select("id")
+        .eq("orderId", order.id);
+
+      return NextResponse.json({
+        success: true,
+        tickets: existingTickets?.map((ticket) => ticket.id) || [],
+      });
     }
 
     if (order.sessionExpiresAt && new Date() > new Date(order.sessionExpiresAt)) {
-      await prisma.order.update({
-        where: { id: orderId },
-        data: { status: "CANCELLED" }
-      });
-      return NextResponse.json({ success: false, error: "Session expired" }, { status: 400 });
+      await supabase
+        .from("orders")
+        .update({ status: "CANCELLED" })
+        .eq("id", order.id);
+
+      return NextResponse.json(
+        { success: false, error: "Session expired" },
+        { status: 400 }
+      );
     }
 
-    const transaction = await prisma.mpesaTransaction.findUnique({
-      where: { confirmationCode: code }
-    });
+    const now = new Date().toISOString();
 
-    if (!transaction) {
-      return NextResponse.json({ success: false, error: "Invalid confirmation code" }, { status: 400 });
-    }
+    let { data: paymentRow } = await supabase
+      .from("payments")
+      .select("id, method, status, amount")
+      .eq("orderId", order.id)
+      .maybeSingle();
 
-    if (transaction.isUsed) {
-      return NextResponse.json({ success: false, error: "Confirmation code already used" }, { status: 400 });
-    }
+    if (!paymentRow) {
+      const fallbackMethod = String(order.paymentMethod || "SIMULATED")
+        .toUpperCase()
+        .trim();
 
-    if (transaction.amount < order.total) {
-      return NextResponse.json({ success: false, error: "Insufficient payment amount" }, { status: 400 });
-    }
-
-    // Process transaction and update order
-    await prisma.$transaction(async (tx) => {
-      // Mark transaction as used
-      await tx.mpesaTransaction.update({
-        where: { id: transaction.id },
-        data: { isUsed: true, usedAt: new Date() }
-      });
-
-      // Update Order
-      await tx.order.update({
-        where: { id: order.id },
-        data: { status: "CONFIRMED" }
-      });
-
-      // Create Payment
-      await tx.payment.upsert({
-        where: { orderId: order.id },
-        update: {
-          amount: order.total,
-          status: "COMPLETED",
-          method: "MPESA",
-          mpesaReceiptNumber: code,
-          paidAt: new Date(),
-        },
-        create: {
+      const { data: createdPayment, error: paymentInsertError } = await supabase
+        .from("payments")
+        .insert({
+          id: crypto.randomUUID(),
           orderId: order.id,
           amount: order.total,
-          currency: "KES",
-          status: "COMPLETED",
-          method: "MPESA",
-          mpesaReceiptNumber: code,
-          paidAt: new Date(),
-        }
-      });
+          method: fallbackMethod,
+          status: "PENDING",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .select("id, method, status, amount")
+        .single();
 
-      // Notifications
-      await tx.notification.create({
-        data: {
-          userId: order.userId,
-          title: "Payment Successful",
-          message: `Your payment of KES ${order.total} for ${order.event.title} was successful.`
+      if (paymentInsertError || !createdPayment) {
+        return NextResponse.json(
+          { success: false, error: "Payment record not found" },
+          { status: 400 }
+        );
+      }
+
+      paymentRow = createdPayment;
+    }
+
+    if (paymentRow.status === "COMPLETED") {
+      return NextResponse.json({ success: true, tickets: [] });
+    }
+
+    const ticketIds: string[] = [];
+
+    for (const item of order.items || []) {
+      const ticketType = item.ticketType;
+      if (!ticketType) continue;
+
+      for (let i = 0; i < item.quantity; i++) {
+        const ticketId = crypto.randomUUID();
+        const ticketNumber = generateTicketNumber(order.event.title);
+        const qrPayload = generateQrPayload(ticketId, order.eventId);
+
+        const { data: ticket, error: ticketError } = await supabase
+          .from("tickets")
+          .insert({
+            id: ticketId,
+            ticketNumber,
+            userId: order.userId,
+            eventId: order.eventId,
+            orderId: order.id,
+            ticketTypeId: item.ticketTypeId,
+            attendeeName: order.buyerName,
+            attendeeEmail: order.buyerEmail,
+            qrCode: "",
+            qrCodeData: qrPayload,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .select("id")
+          .single();
+
+        if (ticketError) {
+          throw ticketError;
         }
-      });
-      await tx.notification.create({
-        data: {
-          userId: order.event.organizerId,
-          title: "New Ticket Sale",
-          message: `You sold a ticket for ${order.event.title} (KES ${order.total}).`
+
+        if (ticket) {
+          ticketIds.push(ticket.id);
         }
-      });
+      }
+
+      await supabase
+        .from("ticket_types")
+        .update({ soldCount: (ticketType.soldCount || 0) + item.quantity })
+        .eq("id", item.ticketTypeId);
+    }
+
+    await supabase
+      .from("payments")
+      .update({
+        status: "COMPLETED",
+        method: paymentRow.method || "SIMULATED",
+        paidAt: now,
+        amount: order.total,
+        updatedAt: now,
+      })
+      .eq("id", paymentRow.id);
+
+    await supabase
+      .from("orders")
+      .update({
+        status: "CONFIRMED",
+        updatedAt: now,
+      })
+      .eq("id", order.id);
+
+    await supabase.from("notifications").insert({
+      userId: order.userId,
+      title: "Payment Successful",
+      message: `Your payment of KES ${order.total} for ${order.event.title} was successful.`,
     });
 
-    // Generate Tickets outside the transaction since issueTicketsForOrder uses its own db connections sequentially
-    const generatedTickets = await issueTicketsForOrder(order.id);
-    const ticketIds = generatedTickets.map(t => t.id);
-
-    return NextResponse.json({ success: true, tickets: ticketIds });
+    return NextResponse.json({
+      success: true,
+      tickets: ticketIds,
+      confirmationCode: confirmationCode,
+    });
   } catch (error) {
     console.error("[Verify Payment]", error);
-    return NextResponse.json({ success: false, error: "Verification failed" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Verification failed" },
+      { status: 500 }
+    );
   }
 }
