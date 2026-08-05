@@ -117,10 +117,25 @@ export default function CustomerDashboard() {
       style: "currency", currency: "KES", minimumFractionDigits: 0,
     }).format(n);
 
-  const attendedEvents = tickets.filter((t) => t.isUsed);
-  const upcomingTickets = tickets.filter((t) => !t.isUsed);
-  const stats = getCustomerDashboardStats({ tickets, reviews, loyaltyPoints });
-  const historyItems = [...tickets].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const now = new Date();
+  const upcomingTickets = tickets.filter(
+    (t) =>
+      !t.isUsed &&
+      t.event?.date &&
+      new Date(t.event.date) > now,
+  );
+  const pastTickets = tickets.filter(
+    (t) =>
+      t.isUsed ||
+      (t.event?.date && new Date(t.event.date) <= now),
+  );
+  const stats = {
+    ...getCustomerDashboardStats({ tickets, reviews, loyaltyPoints }),
+    attendedEvents: pastTickets.length,
+  };
+  const historyItems = [...pastTickets].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
 
   if (status === "loading" || loading) {
     return (

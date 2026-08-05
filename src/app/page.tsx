@@ -43,7 +43,9 @@ export default function HomePage() {
       .catch(() => {}); // silently fall back to gradient
   }, []);
 
-  const filtered = events.filter((e) =>
+  const now = new Date();
+  const upcomingEvents = events.filter((e) => new Date(e.date) > now);
+  const filtered = upcomingEvents.filter((e) =>
     e.title.toLowerCase().includes(search.toLowerCase()) ||
     e.location.toLowerCase().includes(search.toLowerCase())
   );

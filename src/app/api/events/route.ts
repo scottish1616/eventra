@@ -114,17 +114,27 @@ export async function GET(req: NextRequest) {
 
     if (mine) {
       const sessionUser = await getSessionUser();
-      if (!sessionUser?.email) {
+      if (!sessionUser?.id) {
         return NextResponse.json(
           { success: false, error: "Unauthorized" },
           { status: 401 }
         );
       }
 
-      const user = await prisma.user.findUnique({
-        where: { email: sessionUser.email },
+      let user = await prisma.user.findUnique({
+        where: { id: sessionUser.id },
         select: { id: true },
       });
+
+      if (!user && sessionUser.email) {
+        const fallbackUser = await prisma.user.findUnique({
+          where: { email: sessionUser.email.toLowerCase() },
+          select: { id: true },
+        });
+        if (fallbackUser) {
+          user = fallbackUser;
+        }
+      }
 
       if (!user) {
         return NextResponse.json(

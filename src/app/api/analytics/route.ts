@@ -24,20 +24,31 @@ export async function GET() {
     }
 
     const supabase = getSupabase();
-    const organizerResult = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", sessionUser.email?.toLowerCase() ?? "")
-      .single();
+    let organizerId = sessionUser.id;
 
-    if (organizerResult.error || !organizerResult.data) {
+    if (!organizerId && sessionUser.email) {
+      const organizerResult = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", sessionUser.email.toLowerCase())
+        .single();
+
+      if (organizerResult.error || !organizerResult.data) {
+        return NextResponse.json(
+          { success: false, error: "Organizer not found" },
+          { status: 404 },
+        );
+      }
+
+      organizerId = organizerResult.data.id;
+    }
+
+    if (!organizerId) {
       return NextResponse.json(
         { success: false, error: "Organizer not found" },
         { status: 404 },
       );
     }
-
-    const organizerId = organizerResult.data.id;
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();

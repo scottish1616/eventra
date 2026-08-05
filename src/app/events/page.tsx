@@ -58,6 +58,9 @@ export default function EventsPage() {
       .catch(() => setLoading(false));
   }, []);
 
+  const now = new Date();
+  const upcomingEvents = events.filter((e) => new Date(e.date) > now);
+
   const minPrice = (ticketTypes: { price: number }[]) => {
     if (!ticketTypes || ticketTypes.length === 0) return 0;
     return Math.min(...ticketTypes.map((t) => t.price));
@@ -88,7 +91,7 @@ export default function EventsPage() {
     return { total, sold, available, pct };
   };
 
-  const filtered = events
+  const filtered = upcomingEvents
     .filter((e) => {
       const matchSearch =
         e.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -177,7 +180,7 @@ export default function EventsPage() {
               All Events
             </h1>
             <p className="text-gray-400 text-lg">
-              Discover {events.length} events happening across Kenya
+              Discover {upcomingEvents.length} upcoming events happening across Kenya
             </p>
           </div>
 

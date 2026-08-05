@@ -91,8 +91,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const sessionUser = await getSessionUser();
     const body = await req.json();
-    const {
+    let {
       subject,
       message,
       complainantName,
@@ -106,6 +107,24 @@ export async function POST(req: NextRequest) {
       organizerName,
       type,
     } = body;
+
+    if (sessionUser) {
+      if (!complainantName && sessionUser.name) {
+        complainantName = sessionUser.name;
+      }
+      if (!complainantEmail && sessionUser.email) {
+        complainantEmail = sessionUser.email;
+      }
+      if (!organizerId && sessionUser.role === "ORGANIZER") {
+        const user = await prisma.user.findUnique({
+          where: { id: sessionUser.id },
+          select: { id: true },
+        });
+        if (user) {
+          organizerId = user.id;
+        }
+      }
+    }
 
     if (!subject || !message || !complainantName) {
       return NextResponse.json(
