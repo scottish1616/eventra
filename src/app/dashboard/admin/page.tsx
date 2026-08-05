@@ -480,43 +480,7 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 )}
-                    <p className="text-sm font-semibold text-white">Homepage Appearance</p>
-                    <p className="text-gray-500 text-sm mt-1 mb-6">
-                      Set the background image for the homepage hero section. You can only change this once every 7 days.
-                    </p>
-
-                    <div className="flex flex-col sm:flex-row gap-6 items-start">
-                      <div className="w-full sm:w-1/2 aspect-video bg-gray-950 border border-gray-800 rounded-2xl overflow-hidden relative">
-                        {currentHeroImage?.imageUrl ? (
-                          <img src={currentHeroImage.imageUrl} alt="Hero Background" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-600">
-                            <span className="text-2xl mb-2">🖼️</span>
-                            <span className="text-xs">No image set</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 space-y-4">
-                        {currentHeroImage?.updatedAt && (
-                          <p className="text-xs text-gray-400">
-                            Last updated: {new Date(currentHeroImage.updatedAt).toLocaleDateString()}
-                          </p>
-                        )}
-                        <label className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:opacity-90 transition cursor-pointer shadow-lg disabled:opacity-50">
-                          {heroImageLoading ? "Uploading..." : "Upload New Image"}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={handleHeroImageUpload}
-                            disabled={heroImageLoading}
-                          />
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                )}
+                
               </motion.div>
             </AnimatePresence>
           </div>
