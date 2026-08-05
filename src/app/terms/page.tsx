@@ -20,10 +20,6 @@ export default function TermsPage() {
       content: "Event organizers are responsible for the accuracy of event information, delivering promised event experiences, handling attendee complaints, and complying with all applicable laws and regulations.",
     },
     {
-      title: "Platform fees",
-      content: "Eventra charges a platform fee on each ticket sold. This fee is included in the ticket price displayed to attendees. Organizers receive the ticket price minus the platform fee.",
-    },
-    {
       title: "Account termination",
       content: "We reserve the right to suspend or terminate accounts that violate these terms, engage in fraudulent activity, or misuse the platform. Organizer accounts require admin approval and can be deactivated for non-payment of subscription.",
     },

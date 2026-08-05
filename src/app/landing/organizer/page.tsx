@@ -91,13 +91,8 @@ export default function OrganizerLanding() {
       {/* Pricing hint */}
       <section className="py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-4">Simple, Transparent Pricing</h2>
-          <p className="text-purple-100 mb-8 text-lg">No hidden fees. Just a small commission on each ticket sold.</p>
-          <div className="bg-purple-800/50 border border-purple-700 rounded-2xl p-8">
-            <div className="text-4xl font-bold text-purple-300 mb-2">8%</div>
-            <p className="text-purple-200 mb-6">Commission per ticket sold</p>
-            <p className="text-purple-100 text-sm">Plus M-Pesa transaction fees (standard rate)</p>
-          </div>
+          <h2 className="text-3xl font-bold mb-4">Simple, Transparent Ticketing</h2>
+          <p className="text-purple-100 mb-8 text-lg">Sell tickets with no added platform surcharge and clear pricing for your attendees.</p>
         </div>
       </section>
 

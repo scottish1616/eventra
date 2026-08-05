@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 
-const prisma = new PrismaClient();
 
 function getSupabase() {
   return createClient(
@@ -308,7 +307,7 @@ export async function POST(req: NextRequest) {
         status: "PUBLISHED",
         slug,
         organizerId: user.id,
-        platformFeePercent: 5,
+        platformFeePercent: 0,
         platformFeeFixed: 0,
         createdAt: now,
         updatedAt: now,

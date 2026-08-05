@@ -68,19 +68,6 @@ export default function AdminDashboard() {
     escalatedComplaints: 0,
   });
   const [analyticsData, setAnalyticsData] = useState<any>(null);
-  const [settingsData, setSettingsData] = useState<any>(null);
-  const [commissionRules, setCommissionRules] = useState<any[]>([]);
-  const [defaultCommissionRule, setDefaultCommissionRule] = useState<any>(null);
-  const [commissionForm, setCommissionForm] = useState({
-    id: "",
-    name: "Default platform rate",
-    feePercent: 5,
-    feeFixed: 0,
-    minTicketPrice: 0,
-    isDefault: true,
-  });
-  const [commissionError, setCommissionError] = useState<string | null>(null);
-  const [commissionSaving, setCommissionSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const [profileData, setProfileData] = useState<any>(null);
@@ -96,7 +83,7 @@ export default function AdminDashboard() {
       return;
     }
     if (status === "authenticated") {
-      if (user?.role !== "ADMIN") {
+      if (String(user?.role || "").toUpperCase() !== "ADMIN") {
         router.push("/dashboard/organizer");
         return;
       }
@@ -108,13 +95,12 @@ export default function AdminDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [eventsRes, orgsRes, analyticsRes, complaintsRes, settingsRes, profileRes] =
+      const [eventsRes, orgsRes, analyticsRes, complaintsRes, profileRes] =
         await Promise.all([
           fetch("/api/events").then((r) => r.json()),
           fetch("/api/admin/organizers").then((r) => r.json()),
           fetch("/api/admin/analytics").then((r) => r.json()),
           fetch("/api/complaints").then((r) => r.json()),
-          fetch("/api/admin/settings").then((r) => r.json()),
           fetch("/api/profile").then((r) => r.json()),
         ]);
 
@@ -122,29 +108,14 @@ export default function AdminDashboard() {
       const orgsData: Organizer[] = orgsRes.data || [];
       const analytics = analyticsRes.success ? analyticsRes.data : null;
       const complaints = complaintsRes.success ? complaintsRes.data : [];
-      const settings = settingsRes.success ? settingsRes.data : null;
-
-      setSettingsData(settings);
-      setCommissionRules(settings?.rules || []);
-      setDefaultCommissionRule(settings?.defaultRule || null);
-      if (settings?.defaultRule) {
-        setCommissionForm({
-          id: settings.defaultRule.id,
-          name: settings.defaultRule.name,
-          feePercent: settings.defaultRule.feePercent,
-          feeFixed: settings.defaultRule.feeFixed,
-          minTicketPrice: settings.defaultRule.minTicketPrice,
-          isDefault: settings.defaultRule.isDefault,
-        });
-      }
-
-      if (profileRes.data) {
-        setProfileData(profileRes.data);
-      }
 
       setEvents(eventsData);
       setOrganizers(orgsData);
       setAnalyticsData(analytics);
+
+      if (profileRes.data) {
+        setProfileData(profileRes.data);
+      }
 
       const totalTickets = eventsData.reduce(
         (s, e) => s + (e._count?.tickets || 0),
@@ -455,316 +426,60 @@ export default function AdminDashboard() {
 
                 {activeTab === "settings" && (
                   <div className="space-y-6">
-                    <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-                    <div className="space-y-6">
-                      <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-3xl bg-gray-800 flex items-center justify-center">
-                            <Settings className="w-6 h-6 text-gray-400" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-white">
-                              Platform settings
-                            </p>
-                            <p className="text-gray-500 text-sm">
-                              Manage commission rates and platform fee
-                              configuration.
-                            </p>
-                          </div>
+                    <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-3xl bg-gray-800 flex items-center justify-center">
+                          <Settings className="w-6 h-6 text-gray-400" />
                         </div>
-
-                        <div className="mt-6 grid gap-4">
-                          <div className="rounded-3xl border border-gray-800 bg-gray-950 p-5">
-                            <p className="text-xs uppercase text-gray-500 tracking-[0.16em] font-semibold">
-                              Active commission rule
-                            </p>
-                            {defaultCommissionRule ? (
-                              <div className="mt-4 space-y-2">
-                                <p className="text-white font-semibold">
-                                  {defaultCommissionRule.name}
-                                </p>
-                                <p className="text-sm text-gray-400">
-                                  {defaultCommissionRule.feePercent}% + KES{" "}
-                                  {defaultCommissionRule.feeFixed} per ticket
-                                </p>
-                                <p className="text-sm text-gray-500">
-                                  Minimum ticket price: KES{" "}
-                                  {defaultCommissionRule.minTicketPrice}
-                                </p>
-                              </div>
-                            ) : (
-                              <p className="text-gray-500 text-sm mt-4">
-                                No commission rule configured yet.
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="rounded-3xl border border-gray-800 bg-gray-950 p-5">
-                            <p className="text-xs uppercase text-gray-500 tracking-[0.16em] font-semibold">
-                              Platform config
-                            </p>
-                            <p className="mt-4 text-sm text-gray-400">
-                              Commission rules are applied automatically to all
-                              ticket orders on the marketplace.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-semibold text-white">
-                              Commission rule library
-                            </p>
-                            <p className="text-gray-500 text-sm">
-                              Available commission rate presets.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="mt-5 grid gap-3">
-                          {commissionRules.length > 0 ? (
-                            commissionRules.map((rule) => (
-                              <button
-                                key={rule.id}
-                                type="button"
-                                onClick={() =>
-                                  setCommissionForm({
-                                    id: rule.id,
-                                    name: rule.name,
-                                    feePercent: rule.feePercent,
-                                    feeFixed: rule.feeFixed,
-                                    minTicketPrice: rule.minTicketPrice,
-                                    isDefault: rule.isDefault,
-                                  })
-                                }
-                                className="w-full rounded-3xl border border-gray-800 bg-gray-950 p-4 text-left hover:border-purple-500 transition"
-                              >
-                                <div className="flex items-center justify-between gap-3">
-                                  <div>
-                                    <p className="text-sm font-medium text-white">
-                                      {rule.name}
-                                    </p>
-                                    <p className="text-sm text-gray-400">
-                                      {rule.feePercent}% + KES {rule.feeFixed}
-                                    </p>
-                                  </div>
-                                  {rule.isDefault && (
-                                    <span className="text-xs text-green-400 font-semibold uppercase tracking-[0.2em]">
-                                      Active
-                                    </span>
-                                  )}
-                                </div>
-                              </button>
-                            ))
-                          ) : (
-                            <p className="text-gray-500 text-sm">
-                              No commission rules created yet.
-                            </p>
-                          )}
+                        <div>
+                          <p className="text-sm font-semibold text-white">
+                            Platform settings
+                          </p>
+                          <p className="text-gray-500 text-sm">
+                            Manage global platform configuration and homepage appearance.
+                          </p>
                         </div>
                       </div>
                     </div>
 
                     <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
-                      <p className="text-sm font-semibold text-white">
-                        Create / update rule
-                      </p>
-                      <p className="text-gray-500 text-sm mt-1">
-                        Save your platform commission rates here.
+                      <p className="text-sm font-semibold text-white">Homepage Appearance</p>
+                      <p className="text-gray-500 text-sm mt-1 mb-6">
+                        Set the background image for the homepage hero section. You can only change this once every 7 days.
                       </p>
 
-                      {commissionError && (
-                        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-                          {commissionError}
+                      <div className="flex flex-col sm:flex-row gap-6 items-start">
+                        <div className="w-full sm:w-1/2 aspect-video bg-gray-950 border border-gray-800 rounded-2xl overflow-hidden relative">
+                          {currentHeroImage?.imageUrl ? (
+                            <img src={currentHeroImage.imageUrl} alt="Hero Background" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-600">
+                              <span className="text-2xl mb-2">🖼️</span>
+                              <span className="text-xs">No image set</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-
-                      <form
-                        onSubmit={async (event) => {
-                          event.preventDefault();
-                          if (!commissionForm.name.trim()) {
-                            const message = "Rule name is required.";
-                            setCommissionError(message);
-                            toast.error(message);
-                            return;
-                          }
-                          if (
-                            !Number.isFinite(commissionForm.feePercent) ||
-                            commissionForm.feePercent < 0 ||
-                            !Number.isFinite(commissionForm.feeFixed) ||
-                            commissionForm.feeFixed < 0 ||
-                            !Number.isFinite(commissionForm.minTicketPrice) ||
-                            commissionForm.minTicketPrice < 0
-                          ) {
-                            const message =
-                              "Fee values must be valid non-negative numbers.";
-                            setCommissionError(message);
-                            toast.error(message);
-                            return;
-                          }
-                          setCommissionError(null);
-                          setCommissionSaving(true);
-                          try {
-                            const response = await fetch(
-                              "/api/admin/settings",
-                              {
-                                method: "POST",
-                                credentials: "same-origin",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify(commissionForm),
-                              },
-                            );
-                            const json = await response.json();
-                            if (!json.success) {
-                              throw new Error(
-                                json.error || "Unable to save rule",
-                              );
-                            }
-                            const refreshed = await fetch(
-                              "/api/admin/settings",
-                              { credentials: "same-origin" },
-                            ).then((r) => r.json());
-                            setCommissionRules(refreshed.data?.rules || []);
-                            setDefaultCommissionRule(
-                              refreshed.data?.defaultRule || null,
-                            );
-                            setCommissionForm({
-                              id: json.data.id,
-                              name: json.data.name,
-                              feePercent: json.data.feePercent,
-                              feeFixed: json.data.feeFixed,
-                              minTicketPrice: json.data.minTicketPrice,
-                              isDefault: json.data.isDefault,
-                            });
-                            setCommissionError(null);
-                            toast.success("Commission rule saved.");
-                          } catch (saveError) {
-                            const message =
-                              saveError instanceof Error
-                                ? saveError.message
-                                : "Failed to save commission rule.";
-                            console.error("Commission save failed:", saveError);
-                            setCommissionError(message);
-                            toast.error(message);
-                          } finally {
-                            setCommissionSaving(false);
-                          }
-                        }}
-                        className="mt-6 space-y-4"
-                      >
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300">
-                            Rule name
-                          </label>
-                          <input
-                            value={commissionForm.name}
-                            onChange={(event) =>
-                              setCommissionForm((prev) => ({
-                                ...prev,
-                                name: event.target.value,
-                              }))
-                            }
-                            className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-950 px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
-                          />
-                        </div>
-
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-300">
-                              Fee percent
-                            </label>
+                        <div className="flex-1 space-y-4">
+                          {currentHeroImage?.updatedAt && (
+                            <p className="text-xs text-gray-400">
+                              Last updated: {new Date(currentHeroImage.updatedAt).toLocaleDateString()}
+                            </p>
+                          )}
+                          <label className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:opacity-90 transition cursor-pointer shadow-lg disabled:opacity-50">
+                            {heroImageLoading ? "Uploading..." : "Upload New Image"}
                             <input
-                              type="number"
-                              min={0}
-                              step={0.1}
-                              value={commissionForm.feePercent ?? ""}
-                                onChange={(event) =>
-                                  setCommissionForm((prev) => ({
-                                    ...prev,
-                                    feePercent:
-                                      event.target.value === ""
-                                        ? 0
-                                        : Number(event.target.value),
-                                  }))
-                                }
-                              className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-950 px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleHeroImageUpload}
+                              disabled={heroImageLoading}
                             />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-300">
-                              Fixed fee
-                            </label>
-                            <input
-                              type="number"
-                              min={0}
-                              step={1}
-                              value={commissionForm.feeFixed ?? ""}
-                              onChange={(event) =>
-                                setCommissionForm((prev) => ({
-                                  ...prev,
-                                  feeFixed:
-                                    event.target.value === ""
-                                      ? 0
-                                      : Number(event.target.value),
-                                }))
-                              }
-                              className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-950 px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300">
-                            Minimum ticket price
                           </label>
-                          <input
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={commissionForm.minTicketPrice ?? ""}
-                            onChange={(event) =>
-                              setCommissionForm((prev) => ({
-                                ...prev,
-                                minTicketPrice:
-                                  event.target.value === ""
-                                    ? 0
-                                    : Number(event.target.value),
-                              }))
-                            }
-                            className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-950 px-4 py-3 text-sm text-white outline-none focus:border-purple-500"
-                          />
                         </div>
-
-                        <label className="flex items-center gap-3 text-sm text-gray-300">
-                          <input
-                            type="checkbox"
-                            checked={commissionForm.isDefault}
-                            onChange={(event) =>
-                              setCommissionForm((prev) => ({
-                                ...prev,
-                                isDefault: event.target.checked,
-                              }))
-                            }
-                            className="rounded border-gray-700 bg-gray-900 text-purple-500 focus:ring-purple-500"
-                          />
-                          Make this the default commission rule
-                        </label>
-
-                        <button
-                          type="submit"
-                          disabled={commissionSaving}
-                          className="w-full rounded-2xl bg-purple-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-400 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {commissionSaving ? "Saving..." : "Save rule"}
-                        </button>
-                      </form>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
+                )}
                     <p className="text-sm font-semibold text-white">Homepage Appearance</p>
                     <p className="text-gray-500 text-sm mt-1 mb-6">
                       Set the background image for the homepage hero section. You can only change this once every 7 days.

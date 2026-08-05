@@ -1,5 +1,9 @@
 // src/lib/prisma.ts
+import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
+
+// Load local .env (or other env files) early so Prisma can read DATABASE_URL
+dotenv.config();
 
 const prismaClientSingleton = () => {
   return new PrismaClient();

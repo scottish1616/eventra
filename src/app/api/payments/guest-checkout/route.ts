@@ -105,10 +105,9 @@ export async function POST(req: NextRequest) {
       validatedItems.push({ tt, item });
     }
 
-    const platformFee =
-      subtotal * ((event.platformFeePercent || 0) / 100) +
-      (event.platformFeeFixed || 0);
-    const total = subtotal + platformFee;
+    // Platform fees disabled: ticket total is the subtotal amount.
+    const platformFee = 0;
+    const total = subtotal;
 
     const guestEmail =
       buyerEmail ||

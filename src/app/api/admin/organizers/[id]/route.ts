@@ -15,7 +15,7 @@ export async function DELETE(
 ) {
   try {
     const sessionUser = await getSessionUser();
-    if (!sessionUser || sessionUser.role !== "ADMIN") {
+    if (!sessionUser || String(sessionUser.role || "").toUpperCase() !== "ADMIN") {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 },
@@ -29,7 +29,7 @@ export async function DELETE(
       .from("users")
       .delete()
       .eq("id", id)
-      .eq("role", "ORGANIZER");
+      .in("role", ["ORGANIZER", "organizer"]);
 
     if (error) {
       return NextResponse.json(

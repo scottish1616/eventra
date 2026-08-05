@@ -119,7 +119,6 @@ export default function OrganizerDashboard() {
   const [loading, setLoading] = useState(true);
   const [showNewEvent, setShowNewEvent] = useState(false);
   const [analyticsData, setAnalyticsData] = useState<any>(null);
-  const [settingsData, setSettingsData] = useState<any>(null);
   const [profileData, setProfileData] = useState<any>(null);
 
   const user = session?.user as SessionUser | undefined;
@@ -132,19 +131,15 @@ export default function OrganizerDashboard() {
     if (status === "authenticated") {
       const fetchAll = async () => {
         try {
-          const [eventsRes, analyticsRes, settingsRes, profileRes] = await Promise.all([
+          const [eventsRes, analyticsRes, profileRes] = await Promise.all([
             fetch("/api/events?mine=true").then((r) => r.json()),
             fetch("/api/analytics").then((r) => r.json()),
-            fetch("/api/settings").then((r) => r.json()),
             fetch("/api/profile").then((r) => r.json()),
           ]);
 
           setEvents(eventsRes.data || []);
           if (analyticsRes.success) {
             setAnalyticsData(analyticsRes.data);
-          }
-          if (settingsRes.success) {
-            setSettingsData(settingsRes.data);
           }
           if (profileRes.data) {
             setProfileData(profileRes.data);
@@ -899,43 +894,11 @@ export default function OrganizerDashboard() {
                       <Settings className="w-7 h-7 text-gray-600" />
                     </div>
                     <p className="text-gray-300 font-semibold text-base">
-                      Platform settings
+                      Account settings
                     </p>
                     <p className="text-gray-600 text-sm mt-2">
-                      Review the current commission rate applied to your ticket
-                      sales.
+                      Manage your organizer account preferences and event configuration.
                     </p>
-
-                    {loading ? (
-                      <p className="text-gray-500 text-sm mt-4">
-                        Loading platform settings...
-                      </p>
-                    ) : settingsData?.commissionRule ? (
-                      <div className="mt-6 rounded-3xl border border-gray-800 bg-gray-950 p-6 text-left max-w-xl mx-auto">
-                        <p className="text-xs uppercase tracking-[0.18em] text-gray-500 font-semibold">
-                          Active platform commission
-                        </p>
-                        <p className="mt-3 text-white text-lg font-semibold">
-                          {settingsData.commissionRule.name}
-                        </p>
-                        <p className="mt-2 text-gray-400">
-                          {settingsData.commissionRule.feePercent}% + KES{" "}
-                          {settingsData.commissionRule.feeFixed} per ticket
-                        </p>
-                        <p className="mt-2 text-gray-500 text-sm">
-                          Minimum ticket price: KES{" "}
-                          {settingsData.commissionRule.minTicketPrice}
-                        </p>
-                        <p className="mt-4 text-gray-400 text-sm">
-                          These settings are controlled by the platform admin
-                          and apply to all ticket sales.
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-gray-500 text-sm mt-4">
-                        No active platform commission rule is configured yet.
-                      </p>
-                    )}
                   </div>
                 )}
               </motion.div>

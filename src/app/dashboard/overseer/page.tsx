@@ -79,7 +79,7 @@ export default function OverseerDashboard() {
     if (status === "loading") return;
     if (status === "unauthenticated") { router.push("/auth/login"); return; }
     if (status === "authenticated") {
-      if (user?.role !== "OVERSEER") {
+      if (String(user?.role || "").toUpperCase() !== "OVERSEER") {
         router.push("/auth/login");
         return;
       }
@@ -540,7 +540,7 @@ export default function OverseerDashboard() {
                 )}
 
                 {activeTab === "complaints" && (
-                  <ComplaintsCenter role="admin" />
+                  <ComplaintsCenter role="overseer" />
                 )}
 
                 {activeTab === "settings" && (

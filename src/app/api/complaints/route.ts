@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
-
-const prisma = new PrismaClient();
 
 export async function GET() {
   try {
@@ -109,13 +107,14 @@ export async function POST(req: NextRequest) {
     } = body;
 
     if (sessionUser) {
+      const sessionRole = String(sessionUser.role || "").toUpperCase();
       if (!complainantName && sessionUser.name) {
         complainantName = sessionUser.name;
       }
       if (!complainantEmail && sessionUser.email) {
         complainantEmail = sessionUser.email;
       }
-      if (!organizerId && sessionUser.role === "ORGANIZER") {
+      if (!organizerId && sessionRole === "ORGANIZER") {
         const user = await prisma.user.findUnique({
           where: { id: sessionUser.id },
           select: { id: true },
@@ -133,8 +132,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const normalizedType = String(type || "ATTENDEE").toUpperCase();
     const complaintType: "ATTENDEE" | "ORGANIZER" | "ADMIN" =
-      type === "ORGANIZER" ? "ORGANIZER" : type === "ADMIN" ? "ADMIN" : "ATTENDEE";
+      normalizedType === "ORGANIZER"
+        ? "ORGANIZER"
+        : normalizedType === "ADMIN"
+        ? "ADMIN"
+        : "ATTENDEE";
     const isInternal = complaintType === "ORGANIZER" || complaintType === "ADMIN";
 
     let targetOrganizerId = organizerId || null;

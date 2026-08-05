@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 
 interface ComplaintFormProps {
@@ -60,6 +61,7 @@ export function ComplaintForm({
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const { data: session } = useSession();
 
   const [form, setForm] = useState({
     eventId: eventId || "",
@@ -69,6 +71,13 @@ export function ComplaintForm({
   const [organizers, setOrganizers] = useState<Organizer[]>([]);
   const [events, setEvents] = useState<EventData[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+
+  useEffect(() => {
+    if (isInternal && session?.user) {
+      if (!name && session.user.name) setName(session.user.name);
+      if (!email && session.user.email) setEmail(session.user.email);
+    }
+  }, [isInternal, session, name, email]);
 
   const selectedOrganizer = organizers.find(
     (o) => o.id === form.organizerId

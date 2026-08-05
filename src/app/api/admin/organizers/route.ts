@@ -13,7 +13,8 @@ function getSupabase() {
 export async function GET() {
   try {
     const sessionUser = await getSessionUser();
-    if (!sessionUser || (sessionUser.role !== "ADMIN" && sessionUser.role !== "OVERSEER")) {
+    const sessionRole = String(sessionUser?.role || "").toUpperCase();
+    if (!sessionUser || (sessionRole !== "ADMIN" && sessionRole !== "OVERSEER")) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 },
@@ -27,7 +28,7 @@ export async function GET() {
       .select(
         "id, name, email, phone, organizationName, createdAt, approvalStatus, subscriptionStatus",
       )
-      .eq("role", "ORGANIZER")
+      .in("role", ["ORGANIZER", "organizer"])
       .order("createdAt", { ascending: false });
 
     if (error) {
@@ -50,7 +51,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const sessionUser = await getSessionUser();
-    if (!sessionUser || sessionUser.role !== "ADMIN") {
+    if (!sessionUser || String(sessionUser.role || "").toUpperCase() !== "ADMIN") {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 },

@@ -45,7 +45,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             id: data.id,
             name: data.name,
             email: data.email,
-            role: data.role,
+            role: String(data.role || "").toUpperCase(),
           };
         } catch (e) {
           console.error("[Auth] Exception in authorize:", e);
@@ -62,7 +62,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
-        token.role = (user as Record<string, unknown>).role as string;
+        token.role = String((user as Record<string, unknown>).role || "").toUpperCase();
       }
       return token;
     },
@@ -70,7 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token && session.user) {
         // token.sub is the canonical id field in NextAuth v5
         (session.user as any).id = token.sub ?? token.id;
-        (session.user as any).role = token.role;
+        (session.user as any).role = String(token.role || "").toUpperCase();
         session.user.name = token.name as string;
         session.user.email = token.email as string;
       }

@@ -20,7 +20,7 @@ function sumNumbers(rows: any[] | null, field: string) {
 export async function GET() {
   try {
     const sessionUser = await getSessionUser();
-    if (!sessionUser || sessionUser.role !== "ADMIN") {
+    if (!sessionUser || String(sessionUser.role || "").toUpperCase() !== "ADMIN") {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 },
@@ -82,9 +82,9 @@ export async function GET() {
       supabase.from("events").select("id", { count: "exact", head: true }).eq("status", "PUBLISHED"),
       supabase.from("tickets").select("id", { count: "exact", head: true }),
       supabase.from("payments").select("amount, status").eq("status", "COMPLETED"),
-      supabase.from("users").select("id", { count: "exact", head: true }).eq("role", "ORGANIZER"),
-      supabase.from("users").select("id", { count: "exact", head: true }).eq("role", "ORGANIZER").eq("approvalStatus", "APPROVED"),
-      supabase.from("users").select("id", { count: "exact", head: true }).eq("role", "ORGANIZER").eq("approvalStatus", "PENDING"),
+      supabase.from("users").select("id", { count: "exact", head: true }).in("role", ["ORGANIZER", "organizer"]),
+      supabase.from("users").select("id", { count: "exact", head: true }).in("role", ["ORGANIZER", "organizer"]).in("approvalStatus", ["APPROVED", "approved"]),
+      supabase.from("users").select("id", { count: "exact", head: true }).in("role", ["ORGANIZER", "organizer"]).in("approvalStatus", ["PENDING", "pending"]),
       supabase.from("users").select("id", { count: "exact", head: true }),
       supabase.from("orders").select("platformFee"),
     ]);
@@ -114,7 +114,7 @@ export async function GET() {
       supabase
         .from("users")
         .select("id", { count: "exact", head: true })
-        .eq("role", "ORGANIZER")
+        .in("role", ["ORGANIZER", "organizer"])
         .gte("createdAt", thirtyDaysAgo.toISOString()),
     ]);
 

@@ -17,7 +17,7 @@ export async function GET() {
         supabase
           .from("users")
           .select("id, name, organizationName, email")
-          .eq("role", "ORGANIZER"),
+          .in("role", ["ORGANIZER", "organizer"]),
         supabase
           .from("events")
           .select("id, title, organizerId, date, location")
