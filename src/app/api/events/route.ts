@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import prisma from "@/lib/prisma";
+import supabaseClient from "@/lib/supabaseClient";
 import { getSessionUser } from "@/lib/session";
 
-
-function getSupabase() {
+function getSupabaseService() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -13,7 +12,7 @@ function getSupabase() {
 
 const storageBucket = process.env.SUPABASE_STORAGE_BUCKET ?? "event-images";
 
-async function uploadCoverImage(supabase: ReturnType<typeof getSupabase>, coverImageFile: File) {
+async function uploadCoverImage(supabase: ReturnType<typeof getSupabaseService>, coverImageFile: File) {
   const safeFileName = coverImageFile.name.replace(/[^a-zA-Z0-9.-]/g, "_");
   const fileName = `events/${Date.now()}-${safeFileName}`;
   const arrayBuffer = await coverImageFile.arrayBuffer();
@@ -66,7 +65,7 @@ async function uploadCoverImage(supabase: ReturnType<typeof getSupabase>, coverI
   return publicData.publicUrl;
 }
 
-async function uploadBase64Image(supabase: ReturnType<typeof getSupabase>, base64: string, mimeType: string, originalName: string) {
+async function uploadBase64Image(supabase: ReturnType<typeof getSupabaseService>, base64: string, mimeType: string, originalName: string) {
   const safeFileName = originalName.replace(/[^a-zA-Z0-9.-]/g, "_");
   const fileName = `events/${Date.now()}-${safeFileName}`;
   const buffer = Buffer.from(base64, "base64");
@@ -109,7 +108,20 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const mine = searchParams.get("mine") === "true";
-    const search = searchParams.get("search") ?? "";
+    const search = (searchParams.get("search") ?? "").trim();
+    const supabase = supabaseClient;
+    const supabaseService = getSupabaseService();
+
+    const normalizeEvent = (event: any) => ({
+      ...event,
+      ticketTypes: event.ticket_types ?? [],
+      _count: {
+        tickets: Array.isArray(event.tickets) ? event.tickets.length : 0,
+        orders: Array.isArray(event.orders) ? event.orders.length : 0,
+      },
+      bannerUrl: event.coverImage || null,
+      organizer: null,
+    });
 
     if (mine) {
       const sessionUser = await getSessionUser();
@@ -120,19 +132,29 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      let user = await prisma.user.findUnique({
-        where: { id: sessionUser.id },
-        select: { id: true },
-      });
+      let user = null;
+      const { data: userById, error: userByIdError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", sessionUser.id)
+        .maybeSingle();
+
+      if (userByIdError) {
+        console.error("[Events GET mine] user lookup error:", userByIdError);
+      }
+      user = userById;
 
       if (!user && sessionUser.email) {
-        const fallbackUser = await prisma.user.findUnique({
-          where: { email: sessionUser.email.toLowerCase() },
-          select: { id: true },
-        });
-        if (fallbackUser) {
-          user = fallbackUser;
+        const { data: fallbackUser, error: fallbackError } = await supabase
+          .from("users")
+          .select("id")
+          .eq("email", sessionUser.email.toLowerCase())
+          .maybeSingle();
+
+        if (fallbackError) {
+          console.error("[Events GET mine] fallback user lookup error:", fallbackError);
         }
+        user = fallbackUser;
       }
 
       if (!user) {
@@ -142,47 +164,59 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      const events = await prisma.event.findMany({
-        where: { organizerId: user.id },
-        orderBy: { date: "asc" },
-        include: {
-          ticketTypes: true,
-          _count: { select: { tickets: true, orders: true } },
-        },
-      });
+      const { data: events, error: eventsError } = await supabaseService
+        .from("events")
+        .select("*, ticket_types(*), tickets(id), orders(id,total)")
+        .eq("organizerId", user.id)
+        .order("date", { ascending: true });
+
+      if (eventsError) {
+        console.error("[Events GET mine] events query error:", eventsError);
+        return NextResponse.json(
+          { success: false, error: "Failed to fetch events" },
+          { status: 500 }
+        );
+      }
 
       return NextResponse.json({
         success: true,
-        data: events.map((e) => ({
-          ...e,
-          bannerUrl: e.coverImage || null,
-          organizer: null,
-        })),
+        data: (events ?? []).map(normalizeEvent),
       });
     }
 
-    const whereClause: any = { status: "PUBLISHED" };
+    let query = supabase
+      .from("events")
+      .select("*, ticket_types(*), tickets(id), orders(id,total)")
+      .eq("status", "PUBLISHED")
+      .order("date", { ascending: true });
+
     if (search) {
-      whereClause.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { location: { contains: search, mode: "insensitive" } },
-      ];
+      const sanitizedSearch = search.replace(/%/g, "\\%");
+      query = query.or(
+        `title.ilike.%${sanitizedSearch}%,location.ilike.%${sanitizedSearch}%`,
+      );
     }
 
-    const events = await prisma.event.findMany({
-      where: whereClause,
-      orderBy: { date: "asc" },
-      include: {
-        ticketTypes: true,
-        _count: { select: { tickets: true, orders: true } },
-      },
-    });
+    const { data: events, error: eventsError } = await query;
+
+    if (eventsError) {
+      console.error("[Events GET] events query error:", eventsError);
+      return NextResponse.json(
+        { success: false, error: "Failed to fetch events" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      data: events.map((e) => ({
-        ...e,
-        bannerUrl: e.coverImage || null,
+      data: (events ?? []).map((event) => ({
+        ...event,
+        ticketTypes: event.ticket_types ?? [],
+        _count: {
+          tickets: Array.isArray(event.tickets) ? event.tickets.length : 0,
+          orders: Array.isArray(event.orders) ? event.orders.length : 0,
+        },
+        bannerUrl: event.coverImage || null,
         organizer: null,
       })),
     });
@@ -206,9 +240,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const supabase = getSupabase();
+    const supabaseService = getSupabaseService();
 
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await supabaseService
       .from("users")
       .select("id, role")
       .eq("email", sessionUser.email)
