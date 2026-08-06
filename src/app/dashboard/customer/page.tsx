@@ -129,6 +129,7 @@ export default function CustomerDashboard() {
       t.isUsed ||
       (t.event?.date && new Date(t.event.date) <= now),
   );
+  const attendedEvents = pastTickets;
   const stats = {
     ...getCustomerDashboardStats({ tickets, reviews, loyaltyPoints }),
     attendedEvents: pastTickets.length,

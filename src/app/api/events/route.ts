@@ -1,36 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import supabaseClient from "@/lib/supabaseClient";
 import { getSessionUser } from "@/lib/session";
 import { getUpcomingEvents } from "@/lib/eventUtils";
 
-// The editor may not have runtime dependencies installed yet, so keep the route logic self-contained.
-
-interface EventRow {
-  id: string;
-  date: string;
-  endDate?: string | null;
-  coverImage?: string | null;
-  ticket_types?: Array<Record<string, unknown>>;
-  tickets?: Array<Record<string, unknown>>;
-  orders?: Array<Record<string, unknown>>;
-  [key: string]: unknown;
-}
-
 function getSupabaseService() {
   return createClient(
-    env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-    env.SUPABASE_SERVICE_ROLE_KEY ?? ""
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }
 
-const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
-const storageBucket = env.SUPABASE_STORAGE_BUCKET ?? "event-images";
-
-const getBuffer = () => {
-  const bufferCtor = (globalThis as { Buffer?: { from: (value: string, encoding?: string) => Uint8Array } }).Buffer;
-  return bufferCtor;
-};
+const storageBucket = process.env.SUPABASE_STORAGE_BUCKET ?? "event-images";
 
 async function uploadCoverImage(supabase: ReturnType<typeof getSupabaseService>, coverImageFile: File) {
   const safeFileName = coverImageFile.name.replace(/[^a-zA-Z0-9.-]/g, "_");
@@ -88,12 +68,7 @@ async function uploadCoverImage(supabase: ReturnType<typeof getSupabaseService>,
 async function uploadBase64Image(supabase: ReturnType<typeof getSupabaseService>, base64: string, mimeType: string, originalName: string) {
   const safeFileName = originalName.replace(/[^a-zA-Z0-9.-]/g, "_");
   const fileName = `events/${Date.now()}-${safeFileName}`;
-  const bufferCtor = getBuffer();
-  if (!bufferCtor) {
-    throw new Error("Buffer is not available in this environment");
-  }
-
-  const buffer = bufferCtor.from(base64, "base64");
+  const buffer = Buffer.from(base64, "base64");
 
   const ensureBucketExists = async () => {
     try {
@@ -133,11 +108,11 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const mine = searchParams.get("mine") === "true";
+    const includeAll = searchParams.get("includeAll") === "true";
     const search = (searchParams.get("search") ?? "").trim();
-    const supabase = supabaseClient;
     const supabaseService = getSupabaseService();
 
-    const normalizeEvent = (event: EventRow) => ({
+    const normalizeEvent = (event: any) => ({
       ...event,
       ticketTypes: event.ticket_types ?? [],
       _count: {
@@ -158,7 +133,7 @@ export async function GET(req: NextRequest) {
       }
 
       let user = null;
-      const { data: userById, error: userByIdError } = await supabase
+      const { data: userById, error: userByIdError } = await supabaseService
         .from("users")
         .select("id")
         .eq("id", sessionUser.id)
@@ -170,7 +145,7 @@ export async function GET(req: NextRequest) {
       user = userById;
 
       if (!user && sessionUser.email) {
-        const { data: fallbackUser, error: fallbackError } = await supabase
+        const { data: fallbackUser, error: fallbackError } = await supabaseService
           .from("users")
           .select("id")
           .eq("email", sessionUser.email.toLowerCase())
@@ -232,7 +207,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const visibleEvents = getUpcomingEvents((events ?? []) as EventRow[], new Date());
+    const visibleEvents = includeAll
+      ? (events ?? [])
+      : getUpcomingEvents((events ?? []) as Array<{ id: string; date: string; endDate?: string | null }>, new Date());
 
     return NextResponse.json({
       success: true,

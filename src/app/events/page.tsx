@@ -52,9 +52,10 @@ export default function EventsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState({ min: "", max: "" });
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [timeFilter, setTimeFilter] = useState<"upcoming" | "past">("upcoming");
 
   useEffect(() => {
-    fetch("/api/events")
+    fetch("/api/events?includeAll=true")
       .then((r) => r.json())
       .then((d) => { setEvents(d.data || []); setLoading(false); })
       .catch(() => setLoading(false));
@@ -62,6 +63,11 @@ export default function EventsPage() {
 
   const now = new Date();
   const upcomingEvents = getUpcomingEvents(events, now);
+  const pastEvents = events.filter((e) => {
+    const { isPast } = getEventWindowStatus(e, now);
+    return isPast;
+  });
+  const baseEvents = timeFilter === "upcoming" ? upcomingEvents : pastEvents;
 
   const minPrice = (ticketTypes: { price: number }[]) => {
     if (!ticketTypes || ticketTypes.length === 0) return 0;
@@ -96,7 +102,7 @@ export default function EventsPage() {
     return { total, sold, available, pct };
   };
 
-  const filtered = upcomingEvents
+  const filtered = baseEvents
     .filter((e) => {
       const matchSearch =
         e.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -185,8 +191,33 @@ export default function EventsPage() {
               All Events
             </h1>
             <p className="text-gray-400 text-lg">
-              Discover {upcomingEvents.length} upcoming events happening across Kenya
+              Discover {baseEvents.length} {timeFilter} events happening across Kenya
             </p>
+          </div>
+
+          <div className="flex justify-center mb-2">
+            <div className="inline-flex bg-gray-900 border border-gray-800 rounded-xl p-1">
+              <button
+                onClick={() => setTimeFilter("upcoming")}
+                className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  timeFilter === "upcoming"
+                    ? "bg-purple-600 text-white"
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                Upcoming ({upcomingEvents.length})
+              </button>
+              <button
+                onClick={() => setTimeFilter("past")}
+                className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  timeFilter === "past"
+                    ? "bg-purple-600 text-white"
+                    : "text-gray-400 hover:text-white"
+                }`}
+              >
+                Past ({pastEvents.length})
+              </button>
+            </div>
           </div>
 
           {/* Main search */}

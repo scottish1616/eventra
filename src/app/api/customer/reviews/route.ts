@@ -21,11 +21,18 @@ export async function GET() {
 
     const supabase = getSupabase();
 
-    const { data: user } = await supabase
+    const { data: user, error: userError } = await supabase
       .from("users")
       .select("id")
       .eq("email", sessionUser.email)
-      .single();
+      .maybeSingle();
+
+    if (userError) {
+      return NextResponse.json(
+        { success: false, error: userError.message },
+        { status: 500 }
+      );
+    }
 
     if (!user) {
       return NextResponse.json(
