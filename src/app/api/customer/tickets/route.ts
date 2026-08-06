@@ -25,7 +25,7 @@ export async function GET() {
     if (sessionUser.id) {
       userResult = await supabase
         .from("users")
-        .select("id, loyaltyPoints")
+        .select("id")
         .eq("id", sessionUser.id)
         .maybeSingle();
     }
@@ -33,7 +33,7 @@ export async function GET() {
     if (!userResult?.data) {
       userResult = await supabase
         .from("users")
-        .select("id, loyaltyPoints")
+        .select("id")
         .eq("email", sessionUser.email.toLowerCase().trim())
         .maybeSingle();
     }
@@ -85,10 +85,25 @@ export async function GET() {
       }),
     );
 
+    // Compute loyalty points from loyalty_points table (sum of points for the user)
+    let loyaltyPoints = 0;
+    try {
+      const { data: lpRows, error: lpError } = await supabase
+        .from("loyalty_points")
+        .select("points")
+        .eq("userId", userResult.data.id);
+
+      if (!lpError && Array.isArray(lpRows)) {
+        loyaltyPoints = lpRows.reduce((s, r: any) => s + Number(r.points || 0), 0);
+      }
+    } catch (e) {
+      // ignore and default to 0
+    }
+
     return NextResponse.json({
       success: true,
       data: normalized,
-      loyaltyPoints: userResult.data.loyaltyPoints ?? 0,
+      loyaltyPoints,
     });
   } catch (error) {
     console.error("[Customer Tickets]", error);

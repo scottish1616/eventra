@@ -85,12 +85,8 @@ export async function POST(req: NextRequest) {
         eventId,
       });
 
-    await supabase
-      .from("users")
-      .update({
-        loyaltyPoints: supabase.rpc("increment", { value: 10 }),
-      })
-      .eq("id", user.id);
+    // Do not update a non-existent users.loyaltyPoints column.
+    // Loyalty points are stored in the `loyalty_points` table and computed when needed.
 
     return NextResponse.json(
       { success: true, data: review },

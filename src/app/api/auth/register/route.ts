@@ -69,7 +69,6 @@ export async function POST(req: NextRequest) {
         organizationName: organizationName || null,
         role: userRole,
         subscriptionStatus,
-        loyaltyPoints: 0,
       })
       .select("id, name, email, role, subscriptionStatus")
       .single();
