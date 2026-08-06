@@ -65,6 +65,7 @@ export default function OverseerDashboard() {
   const [adminFormLoading, setAdminFormLoading] = useState(false);
   const [heroImageLoading, setHeroImageLoading] = useState(false);
   const [currentHeroImage, setCurrentHeroImage] = useState<any>(null);
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [stats, setStats] = useState<PlatformStats>({
     totalRevenue: 0, subscriptionRevenue: 0,
     totalEvents: 0, publishedEvents: 0,
@@ -91,42 +92,56 @@ export default function OverseerDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [eventsRes, orgsRes, adminsRes] = await Promise.all([
+      const [eventsRes, orgsRes, adminsRes, analyticsRes, complaintsRes] = await Promise.all([
         fetch("/api/events").then((r) => r.json()),
         fetch("/api/admin/organizers").then((r) => r.json()),
         fetch("/api/overseer/admins").then((r) => r.json()),
+        fetch("/api/admin/analytics").then((r) => r.json()),
+        fetch("/api/complaints").then((r) => r.json()),
       ]);
 
       const eventsData: Event[] = eventsRes.data || [];
       const orgsData: Organizer[] = orgsRes.data || [];
       const adminsData: AdminUser[] = adminsRes.data || [];
+      const analytics = analyticsRes.success ? analyticsRes.data : null;
+      const complaints = complaintsRes.success ? complaintsRes.data : [];
 
       setEvents(eventsData);
       setOrganizers(orgsData);
       setAdmins(adminsData);
+      setAnalyticsData(analytics);
 
       const totalTickets = eventsData.reduce(
         (s, e) => s + (e._count?.tickets || 0), 0
       );
       const activeOrgs = orgsData.filter(
-        (o) => o.subscriptionStatus === "active"
+        (o) => o.approvalStatus === "APPROVED"
       ).length;
       const pendingOrgs = orgsData.filter(
-        (o) => !o.subscriptionStatus || o.subscriptionStatus === "pending"
+        (o) => o.approvalStatus === "PENDING"
+      ).length;
+
+      const pendingComplaints = complaints.filter(
+        (c: any) => c.status === "PENDING"
+      ).length;
+      const escalatedComplaints = complaints.filter(
+        (c: any) => c.status === "ESCALATED"
       ).length;
 
       setStats({
-        totalRevenue: totalTickets * 2500,
-        subscriptionRevenue: activeOrgs * 5000,
-        totalEvents: eventsData.length,
-        publishedEvents: eventsData.filter((e) => e.status === "PUBLISHED").length,
-        totalTickets,
-        totalOrganizers: orgsData.length,
-        activeOrganizers: activeOrgs,
-        pendingOrganizers: pendingOrgs,
-        totalComplaints: 0,
-        pendingComplaints: 0,
-        escalatedComplaints: 0,
+        totalRevenue: analytics?.currentStats?.totalRevenue || 0,
+        subscriptionRevenue: analytics?.currentStats?.platformFees || 0,
+        totalEvents: analytics?.currentStats?.totalEvents || eventsData.length,
+        publishedEvents:
+          analytics?.currentStats?.publishedEvents ||
+          eventsData.filter((e) => e.status === "PUBLISHED").length,
+        totalTickets: analytics?.currentStats?.totalTickets || totalTickets,
+        totalOrganizers: analytics?.currentStats?.totalOrganizers || orgsData.length,
+        activeOrganizers: analytics?.currentStats?.activeOrganizers || activeOrgs,
+        pendingOrganizers: analytics?.currentStats?.pendingOrganizers || pendingOrgs,
+        totalComplaints: complaints.length,
+        pendingComplaints,
+        escalatedComplaints,
       });
     } catch {
       toast.error("Failed to load data");
@@ -374,7 +389,7 @@ export default function OverseerDashboard() {
                       </div>
                     </div>
                     <StatsCards stats={stats} loading={loading} />
-                    <AnalyticsCharts />
+                    <AnalyticsCharts analyticsData={analyticsData} />
                   </div>
                 )}
 

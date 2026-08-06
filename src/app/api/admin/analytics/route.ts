@@ -20,7 +20,8 @@ function sumNumbers(rows: any[] | null, field: string) {
 export async function GET() {
   try {
     const sessionUser = await getSessionUser();
-    if (!sessionUser || String(sessionUser.role || "").toUpperCase() !== "ADMIN") {
+    const sessionRole = String(sessionUser?.role || "").toUpperCase();
+    if (!sessionUser || (sessionRole !== "ADMIN" && sessionRole !== "OVERSEER")) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 },
@@ -32,7 +33,7 @@ export async function GET() {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
-    const monthlyData: Array<{ month: string; events: number; tickets: number; revenue: number }> = [];
+    const monthlyData: Array<{ month: string; events: number; tickets: number; revenue: number; organizers: number }> = [];
 
     for (let i = 11; i >= 0; i--) {
       const date = new Date(currentYear, currentMonth - i, 1);
@@ -46,7 +47,7 @@ export async function GET() {
         59,
       );
 
-      const [eventsQuery, ticketsQuery, paymentsQuery] = await Promise.all([
+      const [eventsQuery, ticketsQuery, paymentsQuery, organizersQuery] = await Promise.all([
         supabase
           .from("events")
           .select("id", { count: "exact", head: true })
@@ -63,17 +64,25 @@ export async function GET() {
           .eq("status", "COMPLETED")
           .gte("paidAt", startOfMonth.toISOString())
           .lte("paidAt", endOfMonth.toISOString()),
+        supabase
+          .from("users")
+          .select("id", { count: "exact", head: true })
+          .in("role", ["ORGANIZER", "organizer"])
+          .gte("createdAt", startOfMonth.toISOString())
+          .lte("createdAt", endOfMonth.toISOString()),
       ]);
 
       if (eventsQuery.error) throw eventsQuery.error;
       if (ticketsQuery.error) throw ticketsQuery.error;
       if (paymentsQuery.error) throw paymentsQuery.error;
+      if (organizersQuery.error) throw organizersQuery.error;
 
       monthlyData.push({
         month: date.toLocaleDateString("en-US", { month: "short" }),
         events: eventsQuery.count ?? 0,
         tickets: ticketsQuery.count ?? 0,
         revenue: sumNumbers(paymentsQuery.data, "amount"),
+        organizers: organizersQuery.count ?? 0,
       });
     }
 

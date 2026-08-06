@@ -112,7 +112,7 @@ export async function GET(req: NextRequest) {
     const search = (searchParams.get("search") ?? "").trim();
     const supabaseService = getSupabaseService();
 
-    const normalizeEvent = (event: any) => ({
+    const buildNormalizeEvent = (organizerMap: Map<string, any>) => (event: any) => ({
       ...event,
       ticketTypes: event.ticket_types ?? [],
       _count: {
@@ -120,8 +120,24 @@ export async function GET(req: NextRequest) {
         orders: Array.isArray(event.orders) ? event.orders.length : 0,
       },
       bannerUrl: event.coverImage || null,
-      organizer: null,
+      organizer: organizerMap.get(event.organizerId) ?? null,
     });
+
+    const fetchOrganizerMap = async (rows: any[]) => {
+      const organizerIds = Array.from(
+        new Set((rows ?? []).map((e: any) => e.organizerId).filter(Boolean)),
+      );
+      if (organizerIds.length === 0) return new Map<string, any>();
+      const { data: organizerRows, error: organizerError } = await supabaseService
+        .from("users")
+        .select("id, name, email, organizationName")
+        .in("id", organizerIds);
+      if (organizerError) {
+        console.error("[Events GET] organizer lookup error:", organizerError);
+        return new Map<string, any>();
+      }
+      return new Map((organizerRows ?? []).map((o: any) => [o.id, o]));
+    };
 
     if (mine) {
       const sessionUser = await getSessionUser();
@@ -178,9 +194,10 @@ export async function GET(req: NextRequest) {
         );
       }
 
+      const organizerMap = await fetchOrganizerMap(events ?? []);
       return NextResponse.json({
         success: true,
-        data: (events ?? []).map(normalizeEvent),
+        data: (events ?? []).map(buildNormalizeEvent(organizerMap)),
       });
     }
 
@@ -211,18 +228,11 @@ export async function GET(req: NextRequest) {
       ? (events ?? [])
       : getUpcomingEvents((events ?? []) as Array<{ id: string; date: string; endDate?: string | null }>, new Date());
 
+    const organizerMap = await fetchOrganizerMap(visibleEvents);
+
     return NextResponse.json({
       success: true,
-      data: visibleEvents.map((event) => ({
-        ...event,
-        ticketTypes: event.ticket_types ?? [],
-        _count: {
-          tickets: Array.isArray(event.tickets) ? event.tickets.length : 0,
-          orders: Array.isArray(event.orders) ? event.orders.length : 0,
-        },
-        bannerUrl: event.coverImage || null,
-        organizer: null,
-      })),
+      data: visibleEvents.map(buildNormalizeEvent(organizerMap)),
     });
   } catch (error) {
     console.error("[Events GET]", error);

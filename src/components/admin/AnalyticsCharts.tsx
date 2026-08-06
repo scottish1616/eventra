@@ -101,7 +101,7 @@ export function AnalyticsCharts({ analyticsData }: Props) {
         </div>
         <Suspense fallback={<ChartSkeleton />}>
           <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={data}>
+            <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="revG" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
@@ -153,7 +153,7 @@ export function AnalyticsCharts({ analyticsData }: Props) {
         </div>
         <Suspense fallback={<ChartSkeleton />}>
           <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={data}>
+            <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
               <XAxis dataKey="month" {...axisProps} />
               <YAxis {...axisProps} />
@@ -190,7 +190,7 @@ export function AnalyticsCharts({ analyticsData }: Props) {
         </div>
         <Suspense fallback={<ChartSkeleton h={130} />}>
           <ResponsiveContainer width="100%" height={130}>
-            <LineChart data={data}>
+            <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
               <XAxis dataKey="month" {...axisProps} />
               <YAxis {...axisProps} />
