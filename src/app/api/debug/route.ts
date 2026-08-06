@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma";
 export async function GET() {
   try {
     const user = await prisma.user.findUnique({
-      where: { email: "organizer@eventra.app" },
+      where: { email: "organizer@gmail.com" },
     });
 
     if (!user) {

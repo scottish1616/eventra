@@ -1,39 +1,27 @@
 "use client";
-
-import { useEffect, useState } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useEffect, useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import {
-  Ticket,
-  Users,
-  Calendar,
-  TrendingUp,
-  Plus,
-  LogOut,
-  BarChart3,
-  Shield,
-} from "lucide-react";
+import { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { motion, AnimatePresence } from "framer-motion";
+import { Settings } from "lucide-react";
+import { Sidebar } from "@/components/shared/Sidebar";
+import { Topbar } from "@/components/shared/Topbar";
+import { StatsCards } from "@/components/admin/StatsCards";
+import { AnalyticsCharts } from "@/components/admin/AnalyticsCharts";
+import { EventsTable } from "@/components/admin/EventsTable";
+import { OrganizersTable } from "@/components/admin/OrganizersTable";
+import { PendingOrganizersApproval } from "@/components/admin/PendingOrganizersApproval";
+import { ComplaintsCenter } from "@/components/shared/ComplaintsCenter";
+import { PromotionsAdmin } from "@/components/admin/PromotionsAdmin";
+import type {
+  Event,
+  Organizer,
+  PlatformStats,
+} from "@/components/shared/types";
 
-interface Event {
-  id: string;
-  title: string;
-  date: string;
-  location: string;
-  status: string;
-  slug: string;
-  organizer: { name: string; organizationName: string | null };
-  _count: { tickets: number };
-}
-
-interface Organizer {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  organizationName: string | null;
-  createdAt: string;
-}
+type Tab = "overview" | "events" | "organizers" | "complaints" | "promotions" | "settings";
 
 type SessionUser = {
   name?: string | null;
@@ -41,27 +29,52 @@ type SessionUser = {
   role?: string;
 };
 
+const tabConfig: Record<Tab, { title: string; subtitle: string }> = {
+  overview: { title: "Overview", subtitle: "Platform performance at a glance" },
+  events: {
+    title: "All Events",
+    subtitle: "Monitor all events on the platform",
+  },
+  organizers: {
+    title: "Organizers",
+    subtitle: "Manage accounts and subscriptions",
+  },
+  complaints: {
+    title: "Complaints Center",
+    subtitle: "Handle escalated issues",
+  },
+  promotions: { title: "Promotions", subtitle: "Review and manage promotion requests" },
+  settings: { title: "Settings", subtitle: "Platform configuration" },
+};
+
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
   const [organizers, setOrganizers] = useState<Organizer[]>([]);
+  const [stats, setStats] = useState<PlatformStats>({
+    totalRevenue: 0,
+    subscriptionRevenue: 0,
+    totalEvents: 0,
+    publishedEvents: 0,
+    totalTickets: 0,
+    totalOrganizers: 0,
+    activeOrganizers: 0,
+    pendingOrganizers: 0,
+    totalComplaints: 0,
+    pendingComplaints: 0,
+    escalatedComplaints: 0,
+  });
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    "overview" | "events" | "organizers"
-  >("overview");
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [formLoading, setFormLoading] = useState(false);
-  const [formError, setFormError] = useState("");
-  const [formSuccess, setFormSuccess] = useState("");
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    organizationName: "",
-    password: "",
-  });
+  const [profileData, setProfileData] = useState<any>(null);
+  const [heroImageLoading, setHeroImageLoading] = useState(false);
+  const [currentHeroImage, setCurrentHeroImage] = useState<any>(null);
+
+  const user = session?.user as SessionUser | undefined;
 
   useEffect(() => {
     if (status === "loading") return;
@@ -70,600 +83,409 @@ export default function AdminDashboard() {
       return;
     }
     if (status === "authenticated") {
-      const user = session?.user as SessionUser;
-      if (user?.role !== "ADMIN") {
+      if (String(user?.role || "").toUpperCase() !== "ADMIN") {
         router.push("/dashboard/organizer");
         return;
       }
       setAuthChecked(true);
-      Promise.all([
-        fetch("/api/events").then((r) => r.json()),
-        fetch("/api/admin/organizers").then((r) => r.json()),
-      ])
-        .then(([eventsData, organizersData]) => {
-          setEvents(eventsData.data || []);
-          setOrganizers(organizersData.data || []);
-          setLoading(false);
-        })
-        .catch(() => setLoading(false));
+      loadData();
     }
-  }, [status, session, router]);
+  }, [status, session]);
 
-  const handleAddOrganizer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormLoading(true);
-    setFormError("");
-    setFormSuccess("");
+  const loadData = async () => {
+    setLoading(true);
     try {
+      const [eventsRes, orgsRes, analyticsRes, complaintsRes, profileRes] =
+        await Promise.all([
+          fetch("/api/events").then((r) => r.json()),
+          fetch("/api/admin/organizers").then((r) => r.json()),
+          fetch("/api/admin/analytics").then((r) => r.json()),
+          fetch("/api/complaints").then((r) => r.json()),
+          fetch("/api/profile").then((r) => r.json()),
+        ]);
+
+      const eventsData: Event[] = eventsRes.data || [];
+      const orgsData: Organizer[] = orgsRes.data || [];
+      const analytics = analyticsRes.success ? analyticsRes.data : null;
+      const complaints = complaintsRes.success ? complaintsRes.data : [];
+
+      setEvents(eventsData);
+      setOrganizers(orgsData);
+      setAnalyticsData(analytics);
+
+      if (profileRes.data) {
+        setProfileData(profileRes.data);
+      }
+
+      const totalTickets = eventsData.reduce(
+        (s, e) => s + (e._count?.tickets || 0),
+        0,
+      );
+      const activeOrgs = orgsData.filter(
+        (o) => o.approvalStatus === "APPROVED",
+      ).length;
+      const pendingOrgs = orgsData.filter(
+        (o) => o.approvalStatus === "PENDING",
+      ).length;
+
+      // Calculate real revenue from analytics or fallback to estimation
+      const realRevenue = analytics?.currentStats?.totalRevenue || 0;
+      const platformFees = analytics?.currentStats?.platformFees || 0;
+
+      // Count complaints by status
+      const pendingComplaints = complaints.filter(
+        (c: any) => c.status === "PENDING",
+      ).length;
+      const escalatedComplaints = complaints.filter(
+        (c: any) => c.status === "ESCALATED",
+      ).length;
+
+      setStats({
+        totalRevenue: realRevenue,
+        subscriptionRevenue: platformFees, // Platform fees as subscription revenue
+        totalEvents: analytics?.currentStats?.totalEvents || eventsData.length,
+        publishedEvents:
+          analytics?.currentStats?.publishedEvents ||
+          eventsData.filter((e) => e.status === "PUBLISHED").length,
+        totalTickets: analytics?.currentStats?.totalTickets || totalTickets,
+        totalOrganizers:
+          analytics?.currentStats?.totalOrganizers || orgsData.length,
+        activeOrganizers:
+          analytics?.currentStats?.activeOrganizers || activeOrgs,
+        pendingOrganizers:
+          analytics?.currentStats?.pendingOrganizers || pendingOrgs,
+        totalComplaints: complaints.length,
+        pendingComplaints,
+        escalatedComplaints,
+      });
+    } catch (error) {
+      console.error("Failed to load dashboard data:", error);
+      toast.error("Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddOrganizer = useCallback(
+    async (data: Partial<Organizer> & { password: string }) => {
       const res = await fetch("/api/admin/organizers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(data),
       });
       const json = await res.json();
-      if (!json.success) {
-        setFormError(json.error || "Failed");
-        setFormLoading(false);
-        return;
-      }
-      setFormSuccess(`Account created for ${form.name}`);
-      setOrganizers((prev) => [json.data, ...prev]);
-      setForm({
-        name: "",
-        email: "",
-        phone: "",
-        organizationName: "",
-        password: "",
+      if (!json.success) throw new Error(json.error);
+      setOrganizers((prev) => [
+        { ...json.data, subscriptionStatus: "pending" as const },
+        ...prev,
+      ]);
+      setStats((prev) => ({
+        ...prev,
+        totalOrganizers: prev.totalOrganizers + 1,
+        pendingOrganizers: prev.pendingOrganizers + 1,
+      }));
+    },
+    [],
+  );
+
+  const handleDeleteOrganizer = useCallback(async (id: string) => {
+    const res = await fetch(`/api/admin/organizers/${id}`, {
+      method: "DELETE",
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error);
+    setOrganizers((prev) => prev.filter((o) => o.id !== id));
+    setStats((prev) => ({
+      ...prev,
+      totalOrganizers: Math.max(0, prev.totalOrganizers - 1),
+    }));
+  }, []);
+
+  const handleUpdateStatus = useCallback(
+    async (id: string, newStatus: Organizer["subscriptionStatus"]) => {
+      const res = await fetch(`/api/admin/organizers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionStatus: newStatus }),
       });
-      setShowAddForm(false);
-    } catch {
-      setFormError("Something went wrong");
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+      setOrganizers((prev) =>
+        prev.map((o) =>
+          o.id === id ? { ...o, subscriptionStatus: newStatus } : o,
+        ),
+      );
+    },
+    [],
+  );
+
+  const fetchHeroImage = useCallback(async () => {
+    try {
+      const res = await fetch("/api/site-assets/hero_background");
+      const data = await res.json();
+      if (data.success) {
+        setCurrentHeroImage(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "settings") {
+      fetchHeroImage();
+    }
+  }, [activeTab, fetchHeroImage]);
+
+  const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setHeroImageLoading(true);
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const res = await fetch("/api/site-assets/hero_background", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!data.success) {
+        toast.error(data.error || "Failed to upload image");
+      } else {
+        toast.success("Homepage image updated successfully!");
+        fetchHeroImage();
+      }
+    } catch (err) {
+      toast.error("Failed to upload image");
     } finally {
-      setFormLoading(false);
+      setHeroImageLoading(false);
+      if (e.target) e.target.value = "";
     }
   };
 
-  const formatDate = (d: string) =>
-    new Date(d).toLocaleDateString("en-KE", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
+  const pendingOrgsCount = organizers.filter(
+    (o) => o.approvalStatus === "PENDING",
+  ).length;
 
-  const statusConfig: Record<string, { label: string; className: string }> = {
-    PUBLISHED: {
-      label: "Published",
-      className: "bg-green-50 text-green-700 border border-green-200",
-    },
-    DRAFT: {
-      label: "Draft",
-      className: "bg-gray-100 text-gray-600 border border-gray-200",
-    },
-    CANCELLED: {
-      label: "Cancelled",
-      className: "bg-red-50 text-red-600 border border-red-200",
-    },
-    COMPLETED: {
-      label: "Completed",
-      className: "bg-blue-50 text-blue-700 border border-blue-200",
-    },
-  };
-
-  if (
-    status === "loading" ||
-    (status === "authenticated" && !authChecked) ||
-    loading
-  ) {
+  if (status === "loading" || (status === "authenticated" && !authChecked)) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-10 h-10 border-2 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Loading admin dashboard...</p>
+          <div className="w-10 h-10 border-2 border-purple-800 border-t-purple-400 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">Loading admin panel...</p>
         </div>
       </div>
     );
   }
 
-  const user = session?.user as SessionUser;
-
-  const stats = [
-    {
-      label: "Total events",
-      value: events.length,
-      icon: Calendar,
-      color: "from-purple-500 to-blue-600",
-    },
-    {
-      label: "Published events",
-      value: events.filter((e) => e.status === "PUBLISHED").length,
-      icon: TrendingUp,
-      color: "from-green-500 to-emerald-600",
-    },
-    {
-      label: "Total tickets",
-      value: events.reduce((s, e) => s + (e._count?.tickets || 0), 0),
-      icon: Ticket,
-      color: "from-amber-500 to-orange-500",
-    },
-    {
-      label: "Organizers",
-      value: organizers.length,
-      icon: Users,
-      color: "from-blue-500 to-cyan-600",
-    },
-  ];
+  const tabInfo = tabConfig[activeTab];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-100 shadow-sm flex flex-col min-h-screen sticky top-0">
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center shadow-md">
-              <Ticket className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-gray-900 text-lg">Eventra</span>
-          </div>
-          <div className="flex items-center gap-1.5 mt-3">
-            <Shield className="w-3.5 h-3.5 text-purple-600" />
-            <span className="text-xs font-semibold text-purple-600 uppercase tracking-wider">
-              Super Admin
-            </span>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gray-950 flex">
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: "#1f2937",
+            color: "#f9fafb",
+            border: "1px solid #374151",
+            borderRadius: "12px",
+            fontSize: "13px",
+          },
+        }}
+      />
 
-        <nav className="flex-1 p-4 space-y-1">
-          {[
-            { id: "overview", label: "Overview", icon: BarChart3 },
-            { id: "events", label: "All Events", icon: Calendar },
-            { id: "organizers", label: "Organizers", icon: Users },
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id as typeof activeTab)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                activeTab === item.id
-                  ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-purple-600"
-              }`}
-            >
-              <item.icon className="w-4 h-4" />
-              {item.label}
-            </button>
-          ))}
-        </nav>
+      <Sidebar
+        role="admin"
+        activeTab={activeTab}
+        setActiveTab={(tab) => setActiveTab(tab as Tab)}
+        userName={user?.name || "Admin"}
+        userEmail={user?.email || ""}
+        userImage={profileData?.image || (user as any)?.image || null}
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
+        badges={{
+          organizers: pendingOrgsCount,
+          complaints: stats.escalatedComplaints,
+        }}
+      />
 
-        <div className="p-4 border-t border-gray-100">
-          <div className="mb-3 px-3">
-            <p className="text-sm font-semibold text-gray-900 truncate">
-              {user?.name}
-            </p>
-            <p className="text-xs text-gray-400 truncate">{user?.email}</p>
-          </div>
-          <button
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 rounded-xl transition-colors font-medium"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign out
-          </button>
-        </div>
-      </aside>
+      <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
+        <Topbar
+          title={tabInfo.title}
+          subtitle={tabInfo.subtitle}
+          userName={user?.name || "Admin"}
+          userImage={profileData?.image || (user as any)?.image || null}
+          userRole="admin"
+          onMobileMenuOpen={() => setMobileMenuOpen(true)}
+        />
 
-      {/* Main content */}
-      <main className="flex-1 p-8 overflow-auto">
-        <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">
-              {activeTab === "overview" && "Platform Overview"}
-              {activeTab === "events" && "All Events"}
-              {activeTab === "organizers" && "Manage Organizers"}
-            </h1>
-            <p className="text-gray-500 text-sm mt-1">
-              {activeTab === "overview" &&
-                "Monitor platform activity and performance"}
-              {activeTab === "events" &&
-                "View and monitor all events on the platform"}
-              {activeTab === "organizers" &&
-                "Add and manage organizer accounts"}
-            </p>
-          </div>
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-7xl mx-auto">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.18 }}
+              >
+                {activeTab === "overview" && (
+                  <div className="space-y-6">
+                    <StatsCards stats={stats} loading={loading} />
+                    <AnalyticsCharts analyticsData={analyticsData} />
 
-          {/* Overview tab */}
-          {activeTab === "overview" && (
-            <div>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                {stats.map((s) => (
-                  <div
-                    key={s.label}
-                    className="card p-5 shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <div
-                      className={`w-10 h-10 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center mb-4 shadow-md`}
-                    >
-                      <s.icon className="w-5 h-5 text-white" />
-                    </div>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {s.value}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Recent events */}
-              <div className="card shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                  <h2 className="font-bold text-gray-900">Recent events</h2>
-                  <button
-                    onClick={() => setActiveTab("events")}
-                    className="text-sm text-purple-600 font-semibold hover:text-purple-700"
-                  >
-                    View all →
-                  </button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-100">
-                        <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Event
-                        </th>
-                        <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Organizer
-                        </th>
-                        <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Tickets
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {events.slice(0, 5).map((event) => {
-                        const sc =
-                          statusConfig[event.status] || statusConfig.DRAFT;
-                        return (
-                          <tr
-                            key={event.id}
-                            className="hover:bg-gray-50 transition-colors"
+                    {/* Profile card with bio */}
+                    {profileData && (
+                      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <h3 className="text-sm font-bold text-white mb-1">
+                              {profileData.name || user?.name}
+                            </h3>
+                            {profileData.bio && (
+                              <p className="text-xs text-gray-400 leading-relaxed">
+                                {profileData.bio}
+                              </p>
+                            )}
+                            {!profileData.bio && (
+                              <p className="text-xs text-gray-600 italic">
+                                No bio added yet
+                              </p>
+                            )}
+                          </div>
+                          <a
+                            href="/dashboard/profile"
+                            className="text-xs text-purple-400 hover:text-purple-300 font-semibold px-3 py-1.5 bg-purple-500/10 rounded-lg border border-purple-500/20 hover:border-purple-500/40 transition-all"
                           >
-                            <td className="px-6 py-4">
-                              <p className="font-semibold text-gray-900 text-sm">
-                                {event.title}
-                              </p>
-                              <p className="text-xs text-gray-400 mt-0.5">
-                                {event.location}
-                              </p>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600">
-                              {event.organizer?.organizationName ??
-                                event.organizer?.name}
-                            </td>
-                            <td className="px-6 py-4">
-                              <span
-                                className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${sc.className}`}
-                              >
-                                {sc.label}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm font-semibold text-gray-700 text-right">
-                              {event._count?.tickets || 0}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Events tab */}
-          {activeTab === "events" && (
-            <div className="card shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="font-bold text-gray-900">
-                  All events ({events.length})
-                </h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Event
-                      </th>
-                      <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Organizer
-                      </th>
-                      <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Tickets
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {events.map((event) => {
-                      const sc =
-                        statusConfig[event.status] || statusConfig.DRAFT;
-                      return (
-                        <tr
-                          key={event.id}
-                          className="hover:bg-gray-50 transition-colors"
-                        >
-                          <td className="px-6 py-4">
-                            <Link
-                              href={`/event/${event.slug}/buy`}
-                              className="font-semibold text-gray-900 text-sm hover:text-purple-600 transition-colors"
-                            >
-                              {event.title}
-                            </Link>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              {event.location}
-                            </p>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
-                            {event.organizer?.organizationName ??
-                              event.organizer?.name}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
-                            {formatDate(event.date)}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span
-                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${sc.className}`}
-                            >
-                              {sc.label}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm font-semibold text-gray-700 text-right">
-                            {event._count?.tickets || 0}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Organizers tab */}
-          {activeTab === "organizers" && (
-            <div>
-              {formSuccess && (
-                <div className="mb-5 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
-                    <span className="text-green-600 text-xs font-bold">✓</span>
-                  </div>
-                  <p className="text-sm text-green-700 font-medium">
-                    {formSuccess}
-                  </p>
-                </div>
-              )}
-
-              <div className="card shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                  <div>
-                    <h2 className="font-bold text-gray-900">
-                      Organizers ({organizers.length})
-                    </h2>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      Manage organizer accounts
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowAddForm(!showAddForm);
-                      setFormError("");
-                    }}
-                    className="btn-primary flex items-center gap-2 text-sm py-2.5 px-4"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add organizer
-                  </button>
-                </div>
-
-                {showAddForm && (
-                  <div className="px-6 py-6 border-b border-gray-100 bg-purple-50">
-                    <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
-                      <Users className="w-4 h-4 text-purple-600" />
-                      Create organizer account
-                    </h3>
-                    {formError && (
-                      <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-                        {formError}
+                            Edit
+                          </a>
+                        </div>
                       </div>
                     )}
-                    <form
-                      onSubmit={handleAddOrganizer}
-                      className="grid grid-cols-2 gap-4"
-                    >
+
+                    {/* Pending Organizers */}
+                    {pendingOrgsCount > 0 && (
                       <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                          Full name
-                        </label>
-                        <input
-                          value={form.name}
-                          onChange={(e) =>
-                            setForm({ ...form, name: e.target.value })
-                          }
-                          placeholder="Jane Wanjiru"
-                          required
-                          className="input-field"
-                        />
+                        <div className="flex items-center justify-between mb-4">
+                          <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                            ⏳ Pending Organizer Approvals
+                            <span className="bg-red-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                              {pendingOrgsCount}
+                            </span>
+                          </h2>
+                        </div>
+                        <PendingOrganizersApproval />
                       </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                          Organization
-                        </label>
-                        <input
-                          value={form.organizationName}
-                          onChange={(e) =>
-                            setForm({
-                              ...form,
-                              organizationName: e.target.value,
-                            })
-                          }
-                          placeholder="Nairobi Events Co."
-                          className="input-field"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                          Email address
-                        </label>
-                        <input
-                          type="email"
-                          value={form.email}
-                          onChange={(e) =>
-                            setForm({ ...form, email: e.target.value })
-                          }
-                          placeholder="jane@company.com"
-                          required
-                          className="input-field"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                          Phone number
-                        </label>
-                        <input
-                          type="tel"
-                          value={form.phone}
-                          onChange={(e) =>
-                            setForm({ ...form, phone: e.target.value })
-                          }
-                          placeholder="0712 345 678"
-                          className="input-field"
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                          Temporary password
-                        </label>
-                        <input
-                          type="password"
-                          value={form.password}
-                          onChange={(e) =>
-                            setForm({ ...form, password: e.target.value })
-                          }
-                          placeholder="They can change this later"
-                          required
-                          className="input-field"
-                        />
-                      </div>
-                      <div className="col-span-2 flex gap-3">
+                    )}
+
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-sm font-bold text-white">
+                          Recent events
+                        </h2>
                         <button
-                          type="submit"
-                          disabled={formLoading}
-                          className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-60"
+                          onClick={() => setActiveTab("events")}
+                          className="text-xs text-purple-400 hover:text-purple-300 font-semibold"
                         >
-                          {formLoading ? (
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          ) : (
-                            <Plus className="w-4 h-4" />
-                          )}
-                          {formLoading
-                            ? "Creating..."
-                            : "Create organizer account"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowAddForm(false)}
-                          className="btn-secondary px-5"
-                        >
-                          Cancel
+                          View all →
                         </button>
                       </div>
-                    </form>
+                      <EventsTable
+                        events={events.slice(0, 5)}
+                        loading={loading}
+                      />
+                    </div>
                   </div>
                 )}
 
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-100">
-                        <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Email
-                        </th>
-                        <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Organization
-                        </th>
-                        <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Phone
-                        </th>
-                        <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Joined
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {organizers.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="px-6 py-16 text-center">
-                            <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                              <Users className="w-6 h-6 text-purple-400" />
+                {activeTab === "events" && (
+                  <EventsTable events={events} loading={loading} />
+                )}
+
+                {activeTab === "organizers" && (
+                  <OrganizersTable
+                    organizers={organizers}
+                    loading={loading}
+                    onAdd={handleAddOrganizer}
+                    onDelete={handleDeleteOrganizer}
+                    onUpdateStatus={handleUpdateStatus}
+                    userRole={user?.role}
+                  />
+                )}
+
+                {activeTab === "complaints" && (
+                  <ComplaintsCenter role="admin" />
+                )}
+
+                {activeTab === "promotions" && (
+                  <PromotionsAdmin />
+                )}
+
+                {activeTab === "settings" && (
+                  <div className="space-y-6">
+                    <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-3xl bg-gray-800 flex items-center justify-center">
+                          <Settings className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-white">
+                            Platform settings
+                          </p>
+                          <p className="text-gray-500 text-sm">
+                            Manage global platform configuration and homepage appearance.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6">
+                      <p className="text-sm font-semibold text-white">Homepage Appearance</p>
+                      <p className="text-gray-500 text-sm mt-1 mb-6">
+                        Set the background image for the homepage hero section. You can only change this once every 7 days.
+                      </p>
+
+                      <div className="flex flex-col sm:flex-row gap-6 items-start">
+                        <div className="w-full sm:w-1/2 aspect-video bg-gray-950 border border-gray-800 rounded-2xl overflow-hidden relative">
+                          {currentHeroImage?.imageUrl ? (
+                            <img src={currentHeroImage.imageUrl} alt="Hero Background" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-600">
+                              <span className="text-2xl mb-2">🖼️</span>
+                              <span className="text-xs">No image set</span>
                             </div>
-                            <p className="text-gray-500 font-medium">
-                              No organizers yet
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-4">
+                          {currentHeroImage?.updatedAt && (
+                            <p className="text-xs text-gray-400">
+                              Last updated: {new Date(currentHeroImage.updatedAt).toLocaleDateString()}
                             </p>
-                            <p className="text-gray-400 text-sm mt-1">
-                              Click Add organizer to create the first account
-                            </p>
-                          </td>
-                        </tr>
-                      ) : (
-                        organizers.map((org) => (
-                          <tr
-                            key={org.id}
-                            className="hover:bg-gray-50 transition-colors"
-                          >
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                                  {org.name.charAt(0).toUpperCase()}
-                                </div>
-                                <p className="font-semibold text-gray-900 text-sm">
-                                  {org.name}
-                                </p>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600">
-                              {org.email}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600">
-                              {org.organizationName || "—"}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600">
-                              {org.phone || "—"}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-400">
-                              {formatDate(org.createdAt)}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </main>
+                          )}
+                          <label className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:opacity-90 transition cursor-pointer shadow-lg disabled:opacity-50">
+                            {heroImageLoading ? "Uploading..." : "Upload New Image"}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleHeroImageUpload}
+                              disabled={heroImageLoading}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

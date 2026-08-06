@@ -1,0 +1,199 @@
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { getSessionUser } from "@/lib/session";
+
+export async function GET() {
+  try {
+    const sessionUser = await getSessionUser();
+    if (!sessionUser) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    let where: any = {};
+
+    if (sessionUser.role === "ORGANIZER") {
+      const user = await prisma.user.findUnique({
+        where: { email: sessionUser.email! },
+        select: { id: true },
+      });
+      if (user) {
+        where = {
+          OR: [
+            { organizerId: user.id },
+            { complainantEmail: sessionUser.email },
+          ],
+        };
+      }
+    } else if (sessionUser.role === "ADMIN") {
+      where = {
+        OR: [
+          { assignedTo: "ADMIN" },
+          { type: "ORGANIZER" },
+          { complainantEmail: sessionUser.email },
+        ],
+      };
+    } else if (sessionUser.role === "OVERSEER") {
+      where = {
+        OR: [{ assignedTo: "OVERSEER" }, { type: "ADMIN" }],
+      };
+    } else {
+      // USER / STAFF / CUSTOMER — see only their own
+      if (sessionUser.email) {
+        where = { complainantEmail: sessionUser.email };
+      } else if (sessionUser.name) {
+        where = { complainantName: sessionUser.name };
+      }
+    }
+
+    const complaints = await prisma.complaint.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+    });
+
+    const normalized = complaints.map((c) => ({
+      id: c.id,
+      title: c.subject,
+      description: c.message,
+      category: c.category,
+      priority: c.priority,
+      status: c.status,
+      type: c.type,
+      complainantName: c.complainantName,
+      complainantPhone: c.complainantPhone,
+      complainantEmail: c.complainantEmail,
+      eventId: c.eventId,
+      organizerId: c.organizerId,
+      eventName: c.eventName,
+      organizerName: c.organizerName,
+      assignedTo: c.assignedTo,
+      event: null,
+      organizer: null,
+      replies: [],
+      escalatedAt: null,
+      resolvedAt: null,
+      createdAt: c.createdAt.toISOString(),
+    }));
+
+    return NextResponse.json({ success: true, data: normalized });
+  } catch (error) {
+    console.error("[Complaints GET]", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch complaints" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const sessionUser = await getSessionUser();
+    const body = await req.json();
+    let {
+      subject,
+      message,
+      complainantName,
+      complainantPhone,
+      complainantEmail,
+      category,
+      priority,
+      eventId,
+      organizerId,
+      eventName,
+      organizerName,
+      type,
+    } = body;
+
+    if (sessionUser) {
+      const sessionRole = String(sessionUser.role || "").toUpperCase();
+      if (!complainantName && sessionUser.name) {
+        complainantName = sessionUser.name;
+      }
+      if (!complainantEmail && sessionUser.email) {
+        complainantEmail = sessionUser.email;
+      }
+      if (!organizerId && sessionRole === "ORGANIZER") {
+        const user = await prisma.user.findUnique({
+          where: { id: sessionUser.id },
+          select: { id: true },
+        });
+        if (user) {
+          organizerId = user.id;
+        }
+      }
+    }
+
+    if (!subject || !message || !complainantName) {
+      return NextResponse.json(
+        { success: false, error: "Subject, message and name are required" },
+        { status: 400 }
+      );
+    }
+
+    const normalizedType = String(type || "ATTENDEE").toUpperCase();
+    const complaintType: "ATTENDEE" | "ORGANIZER" | "ADMIN" =
+      normalizedType === "ORGANIZER"
+        ? "ORGANIZER"
+        : normalizedType === "ADMIN"
+        ? "ADMIN"
+        : "ATTENDEE";
+    const isInternal = complaintType === "ORGANIZER" || complaintType === "ADMIN";
+
+    let targetOrganizerId = organizerId || null;
+    if (!targetOrganizerId && eventId) {
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: { organizerId: true, title: true },
+      });
+      if (event?.organizerId) {
+        targetOrganizerId = event.organizerId;
+      }
+    }
+
+    if (!isInternal && (!eventId || !targetOrganizerId)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "An event and organizer must be selected to report an issue",
+        },
+        { status: 400 }
+      );
+    }
+
+    let assignedTo: string | null = null;
+    if (complaintType === "ORGANIZER") assignedTo = "ADMIN";
+    if (complaintType === "ADMIN") assignedTo = "OVERSEER";
+
+    const priorityVal: "LOW" | "MEDIUM" | "HIGH" =
+      priority === "LOW" ? "LOW" : priority === "HIGH" ? "HIGH" : "MEDIUM";
+
+    const complaint = await prisma.complaint.create({
+      data: {
+        subject,
+        message,
+        category: category || "OTHER",
+        priority: priorityVal,
+        complainantName,
+        complainantPhone: complainantPhone || null,
+        complainantEmail: complainantEmail || null,
+        eventId: eventId || null,
+        organizerId: targetOrganizerId,
+        eventName: eventName || null,
+        organizerName: organizerName || null,
+        type: complaintType,
+        assignedTo,
+        status: "PENDING",
+      },
+    });
+
+    return NextResponse.json({ success: true, data: complaint }, { status: 201 });
+  } catch (error) {
+    console.error("[Complaints POST]", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to submit complaint" },
+      { status: 500 }
+    );
+  }
+}

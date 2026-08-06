@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }
 
@@ -21,29 +21,35 @@ function generateQrPayload(ticketId: string, eventId: string): string {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { eventId, items, buyerName, buyerPhone, buyerEmail, paymentMethod } =
-      body;
+    const {
+      eventId,
+      items,
+      buyerName,
+      buyerPhone,
+      buyerEmail,
+      paymentMethod,
+    } = body;
 
     if (!eventId || !items || !buyerName || !buyerPhone) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     const supabase = getSupabase();
+    const now = new Date().toISOString();
 
     const { data: event, error: eventError } = await supabase
       .from("events")
       .select("*")
       .eq("id", eventId)
-      .eq("status", "PUBLISHED")
       .single();
 
     if (eventError || !event) {
       return NextResponse.json(
         { success: false, error: "Event not found" },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -55,7 +61,7 @@ export async function POST(req: NextRequest) {
     if (!ticketTypes || ticketTypes.length === 0) {
       return NextResponse.json(
         { success: false, error: "No ticket types found" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -73,13 +79,13 @@ export async function POST(req: NextRequest) {
 
     for (const item of items) {
       const tt = ticketTypes.find(
-        (t: { id: string }) => t.id === item.ticketTypeId,
+        (t: { id: string }) => t.id === item.ticketTypeId
       );
 
       if (!tt) {
         return NextResponse.json(
           { success: false, error: "Ticket type not found" },
-          { status: 400 },
+          { status: 400 }
         );
       }
 
@@ -89,9 +95,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            error: `Only ${available} ${tt.name} tickets left`,
+            error: `Only ${available} ${tt.name} tickets remaining`,
           },
-          { status: 400 },
+          { status: 400 }
         );
       }
 
@@ -99,13 +105,13 @@ export async function POST(req: NextRequest) {
       validatedItems.push({ tt, item });
     }
 
-    const platformFee =
-      subtotal * ((event.platformFeePercent || 0) / 100) +
-      (event.platformFeeFixed || 0);
-    const total = subtotal + platformFee;
+    // Platform fees disabled: ticket total is the subtotal amount.
+    const platformFee = 0;
+    const total = subtotal;
 
     const guestEmail =
-      buyerEmail || `${buyerPhone.replace(/\s/g, "")}@guest.eventra.app`;
+      buyerEmail ||
+      `${buyerPhone.replace(/\s/g, "")}@guest.eventra.com`;
 
     let userId: string | null = null;
 
@@ -134,7 +140,7 @@ export async function POST(req: NextRequest) {
         console.error("[Guest Checkout] User error:", userError);
         return NextResponse.json(
           { success: false, error: "Failed to create guest user" },
-          { status: 500 },
+          { status: 500 }
         );
       }
 
@@ -144,13 +150,15 @@ export async function POST(req: NextRequest) {
     if (!userId) {
       return NextResponse.json(
         { success: false, error: "Failed to get user" },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
+    const orderId = crypto.randomUUID();
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
+        id: orderId,
         userId,
         eventId,
         status: "PENDING",
@@ -160,6 +168,8 @@ export async function POST(req: NextRequest) {
         buyerName,
         buyerEmail: guestEmail,
         buyerPhone,
+        createdAt: now,
+        updatedAt: now,
       })
       .select()
       .single();
@@ -168,96 +178,52 @@ export async function POST(req: NextRequest) {
       console.error("[Guest Checkout] Order error:", orderError);
       return NextResponse.json(
         { success: false, error: "Failed to create order" },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
     for (const { tt, item } of validatedItems) {
-      const { error: itemError } = await supabase.from("order_items").insert({
+      await supabase.from("order_items").insert({
+        id: crypto.randomUUID(),
         orderId: order.id,
         ticketTypeId: tt.id,
         quantity: item.quantity,
         unitPrice: tt.price,
         subtotal: tt.price * item.quantity,
+        createdAt: now,
+        updatedAt: now,
       });
-
-      if (itemError) {
-        console.error("[Guest Checkout] Order item error:", itemError);
-      }
     }
 
-    const { error: paymentError } = await supabase.from("payments").insert({
+    const normalizedPaymentMethod = String(paymentMethod || "SIMULATED")
+      .toUpperCase()
+      .trim();
+
+    await supabase.from("payments").insert({
+      id: crypto.randomUUID(),
       orderId: order.id,
       amount: total,
-      method: paymentMethod === "MPESA" ? "MPESA" : "SIMULATED",
-      status: "COMPLETED",
-      paidAt: new Date().toISOString(),
+      method: normalizedPaymentMethod,
+      status: "PENDING",
+      createdAt: now,
+      updatedAt: now,
     });
-
-    if (paymentError) {
-      console.error("[Guest Checkout] Payment error:", paymentError);
-    }
-
-    await supabase
-      .from("orders")
-      .update({ status: "CONFIRMED" })
-      .eq("id", order.id);
-
-    const ticketIds: string[] = [];
-
-    for (const { tt, item } of validatedItems) {
-      for (let i = 0; i < item.quantity; i++) {
-        const ticketNumber = generateTicketNumber(event.title);
-
-        const { data: ticket, error: ticketError } = await supabase
-          .from("tickets")
-          .insert({
-            ticketNumber,
-            userId,
-            eventId,
-            orderId: order.id,
-            ticketTypeId: tt.id,
-            attendeeName: buyerName,
-            attendeeEmail: guestEmail,
-            qrCode: "",
-            qrCodeData: "",
-          })
-          .select("id")
-          .single();
-
-        if (ticketError) {
-          console.error("[Guest Checkout] Ticket error:", ticketError);
-        }
-
-        if (ticket) {
-          const qrPayload = generateQrPayload(ticket.id, eventId);
-          await supabase
-            .from("tickets")
-            .update({ qrCodeData: qrPayload })
-            .eq("id", ticket.id);
-          ticketIds.push(ticket.id);
-        }
-      }
-
-      await supabase
-        .from("ticket_types")
-        .update({ soldCount: tt.soldCount + item.quantity })
-        .eq("id", tt.id);
-    }
 
     return NextResponse.json({
       success: true,
       data: {
         orderId: order.id,
-        paymentMethod,
-        tickets: ticketIds,
+        paymentMethod: normalizedPaymentMethod,
+        message: "Payment recorded as pending; complete verification to confirm the order.",
+        tickets: [],
+        awaitingPayment: true,
       },
     });
   } catch (error) {
     console.error("[Guest Checkout]", error);
     return NextResponse.json(
       { success: false, error: "Checkout failed. Please try again." },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

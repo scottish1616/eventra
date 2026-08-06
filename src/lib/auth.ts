@@ -1,12 +1,12 @@
 import NextAuth from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
+import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { createClient } from "@supabase/supabase-js";
 
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }
 
@@ -14,15 +14,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   pages: { signIn: "/auth/login" },
   providers: [
-    CredentialsProvider({
-      name: "credentials",
+    Credentials({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-
         try {
           const supabase = getSupabase();
           const { data, error } = await supabase
@@ -31,11 +29,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             .eq("email", (credentials.email as string).toLowerCase().trim())
             .single();
 
-          if (error || !data || !data.password) return null;
+          if (error) {
+            console.error("[Auth] Supabase error:", error);
+            return null;
+          }
+          if (!data || !data.password) return null;
 
           const isValid = await compare(
             credentials.password as string,
-            data.password,
+            data.password
           );
           if (!isValid) return null;
 
@@ -43,9 +45,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             id: data.id,
             name: data.name,
             email: data.email,
-            role: data.role,
+            role: String(data.role || "").toUpperCase(),
           };
-        } catch {
+        } catch (e) {
+          console.error("[Auth] Exception in authorize:", e);
           return null;
         }
       },
@@ -54,23 +57,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        // Persist user id in both sub (NextAuth v5 standard) and id
+        token.sub = user.id;
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
-        token.role = (user as Record<string, unknown>).role as string;
+        token.role = String((user as Record<string, unknown>).role || "").toUpperCase();
       }
       return token;
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.email = token.email as string;
+      if (token && session.user) {
+        // token.sub is the canonical id field in NextAuth v5
+        (session.user as any).id = token.sub ?? token.id;
+        (session.user as any).role = String(token.role || "").toUpperCase();
         session.user.name = token.name as string;
-        (session.user as unknown as Record<string, unknown>).role = token.role;
-        (session.user as unknown as Record<string, unknown>).id = token.id;
+        session.user.email = token.email as string;
       }
       return session;
     },
   },
 });
 
-export const authOptions = { auth };
+export const authOptions = {};
