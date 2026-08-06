@@ -1,7 +1,8 @@
 export interface EventLike {
-  id: string;
+  id?: string;
   date: string;
   endDate?: string | null;
+  [key: string]: unknown;
 }
 
 export interface EventWindowStatus {

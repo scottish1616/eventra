@@ -4,14 +4,33 @@ import supabaseClient from "@/lib/supabaseClient";
 import { getSessionUser } from "@/lib/session";
 import { getUpcomingEvents } from "@/lib/eventUtils";
 
+// The editor may not have runtime dependencies installed yet, so keep the route logic self-contained.
+
+interface EventRow {
+  id: string;
+  date: string;
+  endDate?: string | null;
+  coverImage?: string | null;
+  ticket_types?: Array<Record<string, unknown>>;
+  tickets?: Array<Record<string, unknown>>;
+  orders?: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+}
+
 function getSupabaseService() {
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+    env.SUPABASE_SERVICE_ROLE_KEY ?? ""
   );
 }
 
-const storageBucket = process.env.SUPABASE_STORAGE_BUCKET ?? "event-images";
+const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+const storageBucket = env.SUPABASE_STORAGE_BUCKET ?? "event-images";
+
+const getBuffer = () => {
+  const bufferCtor = (globalThis as { Buffer?: { from: (value: string, encoding?: string) => Uint8Array } }).Buffer;
+  return bufferCtor;
+};
 
 async function uploadCoverImage(supabase: ReturnType<typeof getSupabaseService>, coverImageFile: File) {
   const safeFileName = coverImageFile.name.replace(/[^a-zA-Z0-9.-]/g, "_");
@@ -69,7 +88,12 @@ async function uploadCoverImage(supabase: ReturnType<typeof getSupabaseService>,
 async function uploadBase64Image(supabase: ReturnType<typeof getSupabaseService>, base64: string, mimeType: string, originalName: string) {
   const safeFileName = originalName.replace(/[^a-zA-Z0-9.-]/g, "_");
   const fileName = `events/${Date.now()}-${safeFileName}`;
-  const buffer = Buffer.from(base64, "base64");
+  const bufferCtor = getBuffer();
+  if (!bufferCtor) {
+    throw new Error("Buffer is not available in this environment");
+  }
+
+  const buffer = bufferCtor.from(base64, "base64");
 
   const ensureBucketExists = async () => {
     try {
@@ -113,7 +137,7 @@ export async function GET(req: NextRequest) {
     const supabase = supabaseClient;
     const supabaseService = getSupabaseService();
 
-    const normalizeEvent = (event: any) => ({
+    const normalizeEvent = (event: EventRow) => ({
       ...event,
       ticketTypes: event.ticket_types ?? [],
       _count: {
@@ -208,7 +232,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const visibleEvents = getUpcomingEvents((events ?? []) as Array<{ id: string; date: string; endDate?: string | null }>, new Date());
+    const visibleEvents = getUpcomingEvents((events ?? []) as EventRow[], new Date());
 
     return NextResponse.json({
       success: true,
@@ -306,7 +330,7 @@ export async function POST(req: NextRequest) {
 
     if (bannerBase64 && bannerMimeType && bannerFileName) {
       try {
-        const url = await uploadBase64Image(supabase, bannerBase64, bannerMimeType, bannerFileName);
+        const url = await uploadBase64Image(supabaseService, bannerBase64, bannerMimeType, bannerFileName);
         if (url) coverImageUrl = url;
       } catch (uploadErr) {
         console.error("[Events POST] Upload error:", uploadErr);
@@ -330,7 +354,7 @@ export async function POST(req: NextRequest) {
     const eventId = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    const { data: event, error: eventError } = await supabase
+    const { data: event, error: eventError } = await supabaseService
       .from("events")
       .insert({
         id: eventId,
@@ -364,7 +388,7 @@ export async function POST(req: NextRequest) {
     }
 
     for (const tt of ticketTypes) {
-      const { error: ttError } = await supabase
+      const { error: ttError } = await supabaseService
         .from("ticket_types")
         .insert({
           id: crypto.randomUUID(),
@@ -389,7 +413,7 @@ export async function POST(req: NextRequest) {
     if (paymentMethods && Array.isArray(paymentMethods)) {
       for (const pm of paymentMethods) {
         if (pm.isActive) {
-          const { error: pmError } = await supabase
+          const { error: pmError } = await supabaseService
             .from("event_payment_methods")
             .insert({
               id: crypto.randomUUID(),
