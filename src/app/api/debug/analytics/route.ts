@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import prisma from "@/lib/prisma";
-import supabaseClient from "@/lib/supabaseClient";
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 // Protected debug endpoint. Set DEBUG_TOKEN in environment and call with header
 // `x-debug-token: <token>` to access.
@@ -18,11 +25,12 @@ export async function GET(req: Request) {
       prisma.user.count({ where: { role: { in: ["ORGANIZER", "organizer"] } } }),
     ]);
 
+    const supabase = getSupabase();
     // Supabase counts (service role key used in server)
     const [sEvents, sTickets, sOrgs] = await Promise.all([
-      supabaseClient.from("events").select("id", { count: "exact", head: true }),
-      supabaseClient.from("tickets").select("id", { count: "exact", head: true }),
-      supabaseClient.from("users").select("id", { count: "exact", head: true }).in("role", ["ORGANIZER", "organizer"]),
+      supabase.from("events").select("id", { count: "exact", head: true }),
+      supabase.from("tickets").select("id", { count: "exact", head: true }),
+      supabase.from("users").select("id", { count: "exact", head: true }).in("role", ["ORGANIZER", "organizer"]),
     ]);
 
     return NextResponse.json({

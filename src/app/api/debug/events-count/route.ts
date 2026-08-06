@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import prisma from "@/lib/prisma";
-import supabaseClient from "@/lib/supabaseClient";
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 // Dev-only: returns counts from Prisma (direct DB) and Supabase table
 export async function GET() {
@@ -10,7 +17,8 @@ export async function GET() {
       select status, count(*)::int as count from \"events\" group by status;
     `);
 
-    const supaRes = await supabaseClient.from("events").select("id,status");
+    const supabase = getSupabase();
+    const supaRes = await supabase.from("events").select("id,status");
 
     const supaData = supaRes.data || [];
     const totalSupabase = supaData.length;

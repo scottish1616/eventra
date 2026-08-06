@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { getEventWindowStatus, getUpcomingEvents } from "@/lib/eventUtils";
 import {
   Search, MapPin, Calendar, Ticket,
   Filter, SlidersHorizontal, ArrowRight,
@@ -12,6 +13,7 @@ interface Event {
   id: string;
   title: string;
   date: string;
+  endDate?: string | null;
   location: string;
   venue: string | null;
   slug: string;
@@ -59,7 +61,7 @@ export default function EventsPage() {
   }, []);
 
   const now = new Date();
-  const upcomingEvents = events.filter((e) => new Date(e.date) > now);
+  const upcomingEvents = getUpcomingEvents(events, now);
 
   const minPrice = (ticketTypes: { price: number }[]) => {
     if (!ticketTypes || ticketTypes.length === 0) return 0;
@@ -81,7 +83,10 @@ export default function EventsPage() {
       hour: "2-digit", minute: "2-digit",
     });
 
-  const isUpcoming = (date: string) => new Date(date) > new Date();
+  const isUpcoming = (event: Event) => {
+    const { isUpcoming: isUpcomingEvent, isActive } = getEventWindowStatus(event, new Date());
+    return isUpcomingEvent || isActive;
+  };
 
   const getAvailability = (ticketTypes: Event["ticketTypes"]) => {
     const total = ticketTypes.reduce((s, tt) => s + tt.totalSlots, 0);
@@ -358,7 +363,7 @@ export default function EventsPage() {
             {filtered.map((event, i) => {
               const price = minPrice(event.ticketTypes);
               const availability = getAvailability(event.ticketTypes);
-              const upcoming = isUpcoming(event.date);
+              const upcoming = isUpcoming(event);
 
               return (
                 <div

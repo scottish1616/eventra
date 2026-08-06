@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { getUpcomingEvents } from "@/lib/eventUtils";
 import {
   Search, MapPin, Calendar, Ticket,
   ChevronRight, Bell, User, Menu, X,
@@ -13,6 +14,7 @@ interface Event {
   id: string;
   title: string;
   date: string;
+  endDate?: string | null;
   location: string;
   slug: string;
   bannerUrl: string | null;
@@ -44,7 +46,7 @@ export default function HomePage() {
   }, []);
 
   const now = new Date();
-  const upcomingEvents = events.filter((e) => new Date(e.date) > now);
+  const upcomingEvents = getUpcomingEvents(events, now);
   const filtered = upcomingEvents.filter((e) =>
     e.title.toLowerCase().includes(search.toLowerCase()) ||
     e.location.toLowerCase().includes(search.toLowerCase())
