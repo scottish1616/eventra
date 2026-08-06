@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import supabaseClient from "@/lib/supabaseClient";
 import { getSessionUser } from "@/lib/session";
+import { getUpcomingEvents } from "@/lib/eventUtils";
 
 function getSupabaseService() {
   return createClient(
@@ -184,7 +185,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    let query = supabase
+    let query = supabaseService
       .from("events")
       .select("*, ticket_types(*), tickets(id), orders(id,total)")
       .eq("status", "PUBLISHED")
@@ -207,9 +208,11 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const visibleEvents = getUpcomingEvents((events ?? []) as Array<{ id: string; date: string; endDate?: string | null }>, new Date());
+
     return NextResponse.json({
       success: true,
-      data: (events ?? []).map((event) => ({
+      data: visibleEvents.map((event) => ({
         ...event,
         ticketTypes: event.ticket_types ?? [],
         _count: {
